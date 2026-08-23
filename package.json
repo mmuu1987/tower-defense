@@ -1,0 +1,11 @@
+{
+  "name": "tri-realm-defense",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "三境守卫 —— Three.js 3D 塔防（3 世界 × 10 关）",
+  "scripts": {
+    "start": "node tools/serve.mjs",
+    "assets": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/download-assets.ps1"
+  }
+}
