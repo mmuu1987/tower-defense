@@ -5,6 +5,7 @@ Three.js 3D 塔防游戏：**4 个世界 × 每世界 10 关共 40 关**，难�
 主菜单、选关（星级锁）、建造升级、暂停、结算、教学、设置与进度存档齐全的中文界面。
 
 **线上试玩**：<https://mmuu1987.github.io/tower-defense-3d/>
+**源码仓库**：<https://github.com/mmuu1987/tower-defense>（发布仓 = dist 产物：<https://github.com/mmuu1987/tower-defense-3d>）
 
 ## 素材致谢（均免费许可）
 
