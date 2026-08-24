@@ -254,6 +254,27 @@
 - [x] 回归：smoke PASS；线上 .dat 版部署 50848cd + 冒烟复验
 - [ ] 待办：移动端触摸操作（4399 要求移动端+网页双端测试通过才可提审）；游戏图标
 
+## 触摸操作 + 移动端 UI 轮（用户确认做 4399 前适配）2026-08-24
+- [x] **js/engine/touch.js 新建 TouchGestures**：只接管 pointerType==='touch'，桌面行为零改动
+      单指轻点（位移<12px）→ onTap → placeOrSelect（与鼠标点击同一逻辑，main.js 抽取共用）；
+      单指拖动 → rig.panByPixels 平移；双指捏合 → zoomBy 缩放 + 中心移动平移 + 捻转 rotateBy 旋转；
+      camera.js 抽出 panByPixels/zoomBy/rotateBy 三个手势接口（中键拖拽同源复用）；
+      canvas touchAction='none'（禁浏览器滚动/双击缩放/下拉刷新）
+- [x] **踩坑**：轻点判定最初带 450ms 时长上限——软渲染主线程卡顿把 down→up 拉到 649~934ms
+      全被误杀；本作无长按语义，改为**纯位移阈值判定**（按住瞄准松手放置，天然抗卡顿）
+- [x] HUD 移动化：新增 ⏸ 暂停按钮（原来只有 Esc）、建造模式"✕ 取消建造"芯片
+      （触摸没有右键，必须有可见退出途径）、提示文案触摸版（"点空地放置 · 拖动可平移视角"）
+- [x] UI 适配（css 媒体查询 ≤820px / ≤420px / 横屏 ≤460px 高）：塔坞 76→58/52px、
+      HUD 紧凑、面板上移避让塔坞、横幅缩小；#fps 移左下且小屏隐藏（与资源条/塔坞重叠）；
+      竖屏 (innerHeight>innerWidth) 相机 dist 17→24（enterBattle 归位处同步）；
+      触屏默认"中"画质（matchMedia pointer:coarse，用户手动选过则以存档为准）；
+      全局 user-select:none / tap-highlight 透明 / 按钮 touch-action:manipulation
+- [x] **tools/touchprobe.mjs**：CDP Input.dispatchTouchEvent 模拟真机四连，
+      数值断言（选中/建塔扣钱/平移 Δ/缩放 17→9）——ALL PASS；smoke PASS
+- [x] 视觉：390×844 竖屏、844×390 横屏、800×600 嵌入三档截图正常（logs/ui-*.png）
+- [x] 部署：dist 84 文件 + Pages 463d302 + 线上冒烟；源码 bae1db1
+- [x] 4399 提交材料"待办"更新：触摸已完成，剩游戏图标与宣传图（可由我生成）
+
 ## 已知问题（不阻塞，可作后续打磨方向）
 - 基线机器人世界1-2 仍无法通关——人类玩家有布阵/换塔/卖塔优势，难度曲线按此设计；
   若要更"手残友好"，可再降 hpMul 指数至 1.075
