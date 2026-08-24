@@ -215,6 +215,20 @@
 - [x] 回归：sim 40 关矩阵 11/40（与旧 11/30 基线同水位）；smoke PASS 5/5；dist 重建 83 文件 15.61MB
 - [x] 上传 GitHub：git init + gh repo create mmuu1987/tower-defense-3d --public --source=. --push
 
+## 管理员模式轮（用户反馈"无法调到第四世界，锁住了"）2026-08-24
+- [x] 需求：用户想随意玩任意世界/关卡，星级锁挡住了第 4 世界
+- [x] 实现：选关页头部新增 **🛠 管理员按钮**（开启时金色 🛠✓）→ 管理面板：
+      ①🔓 解锁全部关卡（存档 admin 标志，isUnlocked 全放行，标签/卡片即时刷新）
+      ②🔒 恢复正常锁定 ③4×10 任意跳转网格（无视锁定直接 enterBattle，已通关显示绿色）
+      ④🗑 清空进度（confirm 防误触）⑤关闭
+- [x] URL 直开：`?admin=1`（main.js 启动时 setAdmin(true)，localStorage 持久化）
+- [x] 进度逻辑隔离：save.nextLevel 改用 unlockedByStars（忽略 admin）——管理员模式下
+      "继续冒险"仍按真实进度推荐，不会被跳到 1-1
+- [x] 验证：?admin=1 探针 4 标签全开/0 锁卡（logs/admin-select.png）；面板跳 4-5
+      直接开战实拍（logs/admin-panel.png = 黄沙戈壁第5关 build 画面）；
+      relock→unlock 往返数值确认；smoke PASS；线上 ?admin=1 复验通过
+- [x] 部署：dist 重建 + Pages 9ec12dc + 源码仓 20e2692
+
 ## 已知问题（不阻塞，可作后续打磨方向）
 - 基线机器人世界1-2 仍无法通关——人类玩家有布阵/换塔/卖塔优势，难度曲线按此设计；
   若要更"手残友好"，可再降 hpMul 指数至 1.075
