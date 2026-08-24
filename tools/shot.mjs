@@ -14,6 +14,8 @@ const URL_TARGET = arg('url', 'http://127.0.0.1:8137/');
 const OUT = arg('out', 'logs/shot.png');
 const WAIT_MS = Number(arg('wait', '25000'));
 const SETTLE_MS = Number(arg('settle', '900')); // 就绪后继续模拟的时长
+const WIN_W = Number(arg('w', '1280'));
+const WIN_H = Number(arg('h', '720'));
 
 const BROWSERS = [
   process.env.TD_BROWSER,
@@ -31,7 +33,7 @@ const child = spawn(exe, [
   '--headless=new', '--disable-gpu', '--enable-unsafe-swiftshader',
   '--no-first-run', '--no-default-browser-check', '--disable-extensions',
   `--user-data-dir=${prof}`, `--remote-debugging-port=${PORT}`,
-  '--window-size=1280,720', '--hide-scrollbars', URL_TARGET,
+  `--window-size=${WIN_W},${WIN_H}`, '--hide-scrollbars', URL_TARGET,
 ], { stdio: 'ignore' });
 const cleanup = () => { try { child.kill(); } catch {} try { fs.rmSync(prof, { recursive: true, force: true }); } catch {} };
 process.on('exit', cleanup);

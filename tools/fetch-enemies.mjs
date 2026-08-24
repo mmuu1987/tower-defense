@@ -54,11 +54,11 @@ if (!qZipCount) console.log('  未获得 Quaternius 包，依赖 B 方案 + 程�
 // —— B) three.js 官方动画模型（可靠直链）——
 const R160 = 'https://raw.githubusercontent.com/mrdoob/three.js/r160/examples/models/gltf';
 const BASE = [
-  ['RobotExpressive/RobotExpressive.glb', 'robot.glb'],           // 动画：Walk/Run/Death/Idle...
-  ['Flamingo.glb',                        'bird_flamingo.glb'],   // 飞行动画
-  ['Parrot.glb',                          'bird_parrot.glb'],
-  ['Stork.glb',                           'bird_stork.glb'],
-  ['Horse.glb',                           'horse.glb'],
+  ['RobotExpressive/RobotExpressive.glb', 'robot.dat'],           // 动画：Walk/Run/Death/Idle...
+  ['Flamingo.glb', 'bird_flamingo.dat'],   // 飞行动画
+  ['Parrot.glb', 'bird_parrot.dat'],
+  ['Stork.glb', 'bird_stork.dat'],
+  ['Horse.glb', 'horse.dat'],
 ];
 
 for (const [rel, dest] of BASE) {
@@ -76,9 +76,9 @@ for (const [rel, dest] of BASE) {
 // —— C) Khronos glTF-Sample-Models（CC0/CC-BY 直链）——
 const KHR = 'https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Models/main/2.0';
 const KHR_BASE = [
-  ['Fox/glTF-Binary/Fox.glb',               'fox.glb'],        // 动画：Survey/Walk/Run（CC0）
-  ['CesiumMan/glTF-Binary/CesiumMan.glb',   'cesiumman.glb'],  // 动画：Walk（CC-BY 4.0，README 需署名）
-  ['BrainStem/glTF-Binary/BrainStem.glb',   'brainstem.glb'],  // 动画：机械舞（CC-BY，Microsoft）
+  ['Fox/glTF-Binary/Fox.glb', 'fox.dat'],        // 动画：Survey/Walk/Run（CC0）
+  ['CesiumMan/glTF-Binary/CesiumMan.glb', 'cesiumman.dat'],  // 动画：Walk（CC-BY 4.0，README 需署名）
+  ['BrainStem/glTF-Binary/BrainStem.glb', 'brainstem.dat'],  // 动画：机械舞（CC-BY，Microsoft）
 ];
 for (const [rel, dest] of KHR_BASE) {
   const out = path.join(OUT, dest);
@@ -92,10 +92,10 @@ for (const [rel, dest] of KHR_BASE) {
   }
 }
 
-// —— D) 沙漠装饰：从 Kenney Nature Kit 复制仙人掌到扁平模型目录 ——
+// —— D) 沙漠装饰：从 Kenney Nature Kit 复制仙人掌到扁平模型目录（产物统一 .dat）——
 for (const f of ['cactus_short.glb', 'cactus_tall.glb']) {
   const src = path.join('assets/kenney/nature/Models/GLTF format', f);
-  const dst = path.join('assets/models', f);
+  const dst = path.join('assets/models', f.replace(/\.glb$/, '.dat'));
   if (fs.existsSync(dst)) { console.log(`SKIP ${f}`); continue; }
   if (fs.existsSync(src)) { fs.copyFileSync(src, dst); console.log(`OK   ${f} -> assets/models/`); }
   else console.log(`MISS ${src}`);

@@ -23,6 +23,7 @@ const MIME = {
   '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg',
   '.webp': 'image/webp', '.gif': 'image/gif', '.svg': 'image/svg+xml',
   '.glb': 'model/gltf-binary', '.gltf': 'model/gltf+json',
+  '.dat': 'application/octet-stream', // glTF-Binary 改名版（4399 白名单合规）
   '.mp3': 'audio/mpeg', '.ogg': 'audio/ogg', '.wav': 'audio/wav',
   '.woff2': 'font/woff2', '.ico': 'image/x-icon', '.md': 'text/markdown; charset=utf-8',
 };
