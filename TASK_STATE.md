@@ -292,6 +292,24 @@
 - [x] 回归：smoke PASS；touchprobe ALL PASS；教学条视觉截图 logs/tutorial-step1.png
 - [x] 部署：dist + Pages d7096fd + 线上冒烟；源码 e2fcfce
 
+## 代码审计轮（用户要求 review）2026-08-26
+- [x] 3 分片并行审计（游戏逻辑/引擎层/主控UI工具链）+ 关键发现逐行人工复核（证伪 2 条误报：
+      FxLayer resize"泄漏"实为全局单例；tryPlace 返回值 UI 侧本有完整提示）
+- [x] **修复 P1×1 + P2×4**：
+      ①Tower.upgrade() invested 在 level++ 后取值 → 查到下一级的钱（卖价双向错误：Lv0→1 多给、
+        Lv1→2 少给）——先取 cost 再 ++（entities.js:295）
+      ②Tower.dispose 不释放每实例材质（mat()/pipMat/Kenney 克隆）→ traverse 释放，
+        共享 BASE_MATS 打 userData.shared 标记跳过，geoCache 几何一律不释放（towers.js/entities.js）
+      ③音量重载失效：_ensure() 硬编码 0.55 覆盖存档音量 → 改用 this.vol（audio.js:22）
+      ④terrain.js:222 悬崖围边 break→continue（单点失败不再中断整圈）
+      ⑤errors.js console.error 拦截加 2s 同类限频，防每帧错误刷爆 /api/log
+- [x] 经济数值断言（shot --eval 实战）：inv 70→130→245，sell 49/91/172 全对 ok:true
+- [x] 回归：smoke + touchprobe + tutprobe 全 PASS；发布 Pages a47a44a + 线上冒烟 PASS；源码 b45813c
+- [x] P3 清单记录在案未修：battle.js noop 行/重复守卫、entities 死表达式×3、spark life 参数被忽略、
+      costOf 与 TOWER_DEFS 双份价目、距离场双实现、标定表无来源、maps 世界 1/3 与 2/4 序列相同、
+      serve.mjs startsWith 兄弟目录边界（dev-only）、main.js 偏长可拆
+- [x] 运维备注：8137 开发服务器曾死掉（06:39 后无日志），已重启 pid=17572
+
 ## 已知问题（不阻塞，可作后续打磨方向）
 - 基线机器人世界1-2 仍无法通关——人类玩家有布阵/换塔/卖塔优势，难度曲线按此设计；
   若要更"手残友好"，可再降 hpMul 指数至 1.075
