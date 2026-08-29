@@ -397,6 +397,26 @@
       ③ 无头实机截图确认：第 5 世界夜景战斗、新版主菜单 Logo、5 世界选关面板。
       ④ `tri-realm-defense-4399.zip` 用最新 dist 重建（9.37MB / 110 文件 / 符合 4399 白名单）。
 
+## Gemini 协作轮问题修复（用户报告新怪物倒走/无动作）2026-08-29
+- [x] 背景：用户用 Gemini 3.7 完成视觉升级（第5世界幽暗墓园 50 关、2D UI 图标、
+      分层阶梯地形、塔升 5 级、平衡再调 hpMul 1.048^d），报告新怪物"一两个倒着走、几个没动作"
+- [x] **审查结论**：①倒走实锤——Gemini 的"fix orientations"提交把 soldier/xbot 系 5 个 def
+      （healer/splitter/lava/frost/graveyard）的 yaw 从验证过的 0 改回 Math.PI（该两模型原生 -Z，
+      历史"朝向终修轮"已实证；entities 朝向公式未动，纯属 yaw 配置改反）
+      ②"没动作"当前代码无法复现：16 类全验证动画推进（mixer 时间、马/鸟 morph 权重、剪辑轨道、
+      地形压平未破坏、启动 await modelsReady 未破坏）——最可能是模型预载失败回退程序化替身
+      （替身会走但四肢无动作，正是该症状；弱网下 2-3MB 模型 20s 超时即触发，线上版尤甚）
+- [x] **修复 2d87d8a**：5 个 def yaw 恢复 0；enemycheck 16/16 ok
+- [x] **治本 664a01c**：Enemy._tryModelUpgrade 模型迟到热替换——程序化替身每 2s 查模型缓存，
+      可用即原地升级（mesh/血条/位置迁移实测通过，GLB 自带缩放不覆盖）；main.js 每 15s 后台
+      补载缺失模型模板（20 轮自愈）
+- [x] 新工具：tools/enemycheck.mjs（16 类朝向+动画体检）、tools/animcheck.mjs（真实主循环
+      mixer 推进检测）；坑：atan2(-0,-1)=-π 的负零语义曾误导 rotY 断言（探针已修正）
+- [x] 回归：smoke PASS；sim 38/50（Gemini 重调后的新基线，难度大幅低于旧 12/40，属其设计选择）
+- [x] 线上核查：Gemini 已把带 bug 的版本推上 GitHub Pages（线上 healer yaw=Math.PI 实锤）→
+      本轮重新部署修复版 + 重建 4399 zip
+- [ ] 待观察：用户复玩确认"没动作"是否消失（若再现，enemycheck/animcheck 可秒定位）
+
 ## 下一轮从哪里继续
 - 全部 3D/2D 素材与 50 关游戏内容已完成上线与打包。
 - 可按照 `release/4399/提交材料.md` 提审上线。
