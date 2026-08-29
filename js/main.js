@@ -44,7 +44,7 @@ async function init() {
   let worldIdx = 0, lvlIdx = 0;
   if (params.get('level')) {
     const [w, l] = params.get('level').split(',').map(Number);
-    if (Number.isFinite(w)) worldIdx = THREE.MathUtils.clamp(w, 0, 3);
+    if (Number.isFinite(w)) worldIdx = THREE.MathUtils.clamp(w, 0, 4);
     if (Number.isFinite(l)) lvlIdx = THREE.MathUtils.clamp(l, 0, 9);
   }
 
@@ -166,7 +166,7 @@ async function init() {
   const menu = createMenu({
     onPlay: () => {
       const nxt = save.nextLevel();
-      enterBattle(nxt ? nxt.w : 3, nxt ? nxt.l : 9);
+      enterBattle(nxt ? nxt.w : 4, nxt ? nxt.l : 9);
     },
     onSelect: () => showSelect(),
     onSettings: () => settingsPanel.show(),
@@ -188,7 +188,7 @@ async function init() {
 
   const resultModal = createResult({
     onRetry: () => { const b = lastBattleInfo; enterBattle(b.w, b.l); },
-    onNext: () => { const b = lastBattleInfo; enterBattle(Math.min(3, b.w + (b.l === 9 ? 1 : 0)), (b.l + 1) % 10); },
+    onNext: () => { const b = lastBattleInfo; enterBattle(Math.min(4, b.w + (b.l === 9 ? 1 : 0)), (b.l + 1) % 10); },
     onSelect: () => { exitBattle(); showSelect(); },
   });
   let lastBattleInfo = { w: 0, l: 0 };
@@ -355,7 +355,7 @@ async function init() {
         audio.victory();
         resultModal.show(true, {
           stars, levelName: battle.level.name,
-          hasNext: !(w === 3 && l === 9),
+          hasNext: !(w === 4 && l === 9),
         });
         slowmo = Math.max(slowmo, 0.25);
       } else {
@@ -383,7 +383,7 @@ async function init() {
     menu.show();
     const nxt = save.nextLevel();
     menu.root.querySelector('#m-play').textContent =
-      nxt ? `▶ 开始冒险（${nxt.w + 1}-${nxt.l + 1}）` : '▶ 已全通关！再战 4-10';
+      nxt ? `▶ 开始冒险（${nxt.w + 1}-${nxt.l + 1}）` : '▶ 已全通关！再战 5-10';
     rig.autoOrbit = true;
   }
   function showSelect() {
@@ -467,6 +467,20 @@ async function init() {
       const key = keys[Number(e.code.slice(5)) - 1];
       battle.selectBuild(battle.selectedType === key ? null : key);
       audio.click();
+    }
+    // 空格/回车：开波（休整期=提前开战拿奖励金；建造期=正常开战）
+    if (mode === 'battle' && battle && !paused && (e.code === 'Space' || e.code === 'Enter')
+        && settingsPanel.root.classList.contains('hidden')
+        && resultModal.root.classList.contains('hidden')) {
+      if (battle.state === 'intermission') {
+        e.preventDefault();
+        battle.callWaveEarly();
+        hud?.hideWaveBtn();
+      } else if (battle.state === 'build') {
+        e.preventDefault();
+        battle.startWave();
+        hud?.hideWaveBtn();
+      }
     }
   });
 

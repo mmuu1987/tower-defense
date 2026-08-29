@@ -98,7 +98,7 @@ const rows = [];
 if (args.length >= 2 && Number.isFinite(args[0])) {
   rows.push(simulate(args[0], args[1]));
 } else {
-  for (let w = 0; w < 4; w++) for (let l = 0; l < 10; l++) rows.push(simulate(w, l));
+  for (let w = 0; w < 5; w++) for (let l = 0; l < 10; l++) rows.push(simulate(w, l));
 }
 
 console.log('w,l  结果    生命 击杀 波次   塔');
