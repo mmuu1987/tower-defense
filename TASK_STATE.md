@@ -417,6 +417,25 @@
       本轮重新部署修复版 + 重建 4399 zip
 - [ ] 待观察：用户复玩确认"没动作"是否消失（若再现，enemycheck/animcheck 可秒定位）
 
+## T-pose 根因与 xbot 朝向终结轮（用户截图报告两个怪姿势不对）2026-08-30
+- [x] 定位手段（会话看不了图，全程改用客观数据判定，新增 6 个探针）：
+      gaitprobe（形变量/骨旋转量，测 T-pose）、bindprobe（逐轨道 PropertyBinding 解析测试）、
+      boneprobe/mixamocheck（骨骼解剖学朝向）、jointprobe（无名骨模型骨架结构）、gaitprobe2（相关性法）
+- [x] **T-pose 根因（真正的元凶，非上一轮"没动作"那类替身问题）**：GLTFLoader 对无名节点用 uuid
+      当动画轨道目标名，而 SkeletonUtils.clone() 给克隆体分配全新 uuid → PropertyBinding 解析不到
+      → 整条剪辑静默失效 → 定格绑定姿态。brainstem（舞械偶）实测 38/38 轨道全失败、形变量 0。
+      **修复**：modellib 加载时给无名节点赋稳定名（_n0.._nN）并把轨道名从 uuid 改写为该名
+      → 38/38 解析成功、形变量 0→0.477。此修复对未来所有无名节点模型普遍生效。
+- [x] **xbot 朝向（第二个怪）**：上一轮把 xbot 一并按 soldier 处理（yaw=0）是错的。
+      tools/mixamocheck.mjs 三重解剖学投票（脚趾/拇指/膝前突 dz）实测：
+      soldier 全 <0（原生 -Z→yaw=0）、**xbot 全 >0 且左右完全一致（原生 +Z→yaw=π）**——两者相反。
+      已改回 splitter/bossLava 的 yaw=Math.PI；gaitprobe2 相关性法独立复核吻合（corr +0.466）。
+- [x] 方法论教训：gaitprobe 的"支撑脚拖拽阈值法"对不同单位制/绑定姿态不稳健（soldier 得 6.48
+      离谱量级且与解剖学矛盾）——已在该工具注释标注废弃，朝向判定以 mixamocheck 为准。
+- [x] 回归：enemycheck 16/16 ok、gaitprobe 无 T-pose、smoke/tutprobe/touchprobe/rushprobe 全 PASS
+      （rushprobe 顺带修掉探针自身竞态：读预期奖励与按空格间倒计时衰减致差 1 金，改 speed=0 冻结）
+- [x] 已部署上线 51563f7 + 线上双修复核验通过 + 线上冒烟 PASS + 4399 zip 重建（9.4MB）
+
 ## 下一轮从哪里继续
 - 全部 3D/2D 素材与 50 关游戏内容已完成上线与打包。
 - 可按照 `release/4399/提交材料.md` 提审上线。
