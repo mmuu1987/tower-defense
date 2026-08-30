@@ -176,8 +176,10 @@ try {
   await get(`__TD_DEBUG.battle().speed = 3`);
   s = await waitFor(`(()=>{const b=__TD_DEBUG.battle();return b.state==='intermission'?{gold:b.gold}:null})()`, 120000, 300);
   check('再次进入休整', !!s);
-  await get(`__TD_DEBUG.battle().speed = 1`);
-  await sleep(400);
+  // 冻结倒计时：speed=0 使 intermission 停摆——否则"读取预期奖励"与"按下空格"之间的
+  // 几十毫秒衰减会让金额差 1（探针自身竞态，非游戏 bug）
+  await get(`__TD_DEBUG.battle().speed = 0`);
+  await sleep(300);
   const g2 = await get(`__TD_DEBUG.battle().gold`);
   const exp2 = await get(`__TD_DEBUG.battle().earlyCallBonus(Math.max(0,__TD_DEBUG.battle().intermission))`);
   await call('Input.dispatchKeyEvent', { type: 'keyDown', key: ' ', code: 'Space', windowsVirtualKeyCode: 32, nativeVirtualKeyCode: 32 });
