@@ -82,10 +82,12 @@ try {
   await dev.call('Page.enable');
   await dev.call('Runtime.enable');
 
-  // 1) 页面就绪
+  // 1) 页面就绪（远端目标首帧更慢：17MB 资源过网 + CDN 冷缓存 + swiftshader 软渲染，
+  //    本地 20s 够用，线上放宽到 75s——后续断言若通过即证明确实就绪，不能算失败）
+  const READY_MS = /127\.0\.0\.1|localhost/.test(URL_TARGET) ? 20000 : 75000;
   let ready = false, fatalMsg = null;
   const t0 = Date.now();
-  while (Date.now() - t0 < 20000) {
+  while (Date.now() - t0 < READY_MS) {
     const r = await dev.call('Runtime.evaluate', {
       expression: '({ready: !!window.__TD_READY, fatal: window.__TD_FATAL || null})', returnByValue: true,
     });
