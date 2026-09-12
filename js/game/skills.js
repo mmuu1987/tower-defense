@@ -11,6 +11,38 @@ export const SKILL_DEFS = {
       B: { key: 'mark', name: '单点压制', desc: '对高威胁目标造成更高伤害', modifiers: { damagePct: 0.18, ultimateDamagePct: 0.25 } },
     },
   },
+  cannon: {
+    signature: { key: 'barrage', name: '集束炮击', unlockLevel: 4, cooldown: 14 },
+    ultimate: { key: 'carpetBombing', name: '地毯轰炸', unlockLevel: 8, cooldown: 28 },
+    specializations: {
+      A: { key: 'armorBreaker', name: '破甲穿透', desc: '穿透护甲，对精英和Boss更有效', modifiers: { armorPenetration: 8, eliteDamagePct: 0.15, bossDamagePct: 0.2 } },
+      B: { key: 'blastRadius', name: '范围增强', desc: '溅射范围扩大，影响更多目标', modifiers: { splashPct: 0.25, damagePct: 0.12, signatureCooldownPct: -0.15 } },
+    },
+  },
+  sniper: {
+    signature: { key: 'weakSpot', name: '弱点狙击', unlockLevel: 4, cooldown: 15 },
+    ultimate: { key: 'markedForDeath', name: '狙击标记', unlockLevel: 8, cooldown: 25 },
+    specializations: {
+      A: { key: 'apRounds', name: '穿甲弹', desc: '更强的护甲穿透和真实伤害', modifiers: { trueDamage: true, signatureDamagePct: 0.5 } },
+      B: { key: 'headshot', name: '爆头', desc: '有概率造成暴击伤害', modifiers: { critChance: 0.25, critMultiplier: 2.0, ratePct: 0.18, signatureCooldownPct: -0.2 } },
+    },
+  },
+  tesla: {
+    signature: { key: 'overload', name: '过载', unlockLevel: 4, cooldown: 13 },
+    ultimate: { key: 'empBlast', name: '电磁脉冲', unlockLevel: 8, cooldown: 27 },
+    specializations: {
+      A: { key: 'chainMaster', name: '连锁增强', desc: '更多弹跳目标，更远弹跳距离', modifiers: { chains: 4, chainRangePct: 0.3, signatureDuration: 1 } },
+      B: { key: 'paralyze', name: '瘫痪', desc: '电击附带减速效果', modifiers: { slow: { pct: 0.35, dur: 1.5 }, damagePct: 0.15, slowedDamagePct: 0.12 } },
+    },
+  },
+  frost: {
+    signature: { key: 'frostNova', name: '冰环新星', unlockLevel: 4, cooldown: 12 },
+    ultimate: { key: 'blizzardField', name: '极寒领域', unlockLevel: 8, cooldown: 30 },
+    specializations: {
+      A: { key: 'deepFreeze', name: '深度冻结', desc: '更强的减速效果', modifiers: { slowPct: 0.12, slowDurationPct: 0.3, signatureSlowPct: 0.1 } },
+      B: { key: 'frozenCycle', name: '冰冻循环', desc: '更频繁的冰环释放', modifiers: { ratePct: 0.2, signatureCooldownPct: -0.25, slowedDamagePct: 0.18 } },
+    },
+  },
   venom: {
     signature: { key: 'toxicBurst', name: '毒液爆破', unlockLevel: 4, cooldown: 13 },
     ultimate: { key: 'plagueCloud', name: '毒云区', unlockLevel: 8, cooldown: 26 },
@@ -146,15 +178,142 @@ function castBeacon(tower, tier, ctx) {
   return true;
 }
 
+function castCannon(tower, tier, ctx) {
+  const s = tower.combatStats();
+  const target = tower.acquire(ctx.enemies, ctx);
+  if (!target) return false;
+  const from = muzzleOf(tower);
+  if (tier === 'signature') {
+    // 集束炮击：立即发射 4 枚炮弹
+    const dmg = Math.round(s.dmg * 0.6);
+    const targetPos = target.pos.clone();
+    for (let i = 0; i < 4; i++) {
+      ctx.projectiles.spawnMortar(from, targetPos, dmg, s.projSpeed * (1 + i * 0.15), {
+        ...damageOpts(tower), splash: s.splash,
+      });
+    }
+    ctx.fx.flash(from, 0xff9a4a, 8, 0.12);
+    return true;
+  }
+  // 地毯轰炸：立即发射多枚炮弹到目标区域
+  const bombingSite = target.pos.clone();
+  const radius = 3.5;
+  for (let i = 0; i < 8; i++) {
+    const offset = new THREE.Vector3(
+      (Math.random() - 0.5) * radius * 1.6,
+      0,
+      (Math.random() - 0.5) * radius * 1.6
+    );
+    const impactPos = bombingSite.clone().add(offset);
+    ctx.projectiles.spawnMortar(from, impactPos, Math.round(s.dmg * 0.8), s.projSpeed * (1 + i * 0.1), {
+      ...damageOpts(tower), splash: 2.5,
+    });
+  }
+  ctx.fx.ring(bombingSite, radius, 0xff6a3a, 0.7);
+  return true;
+}
+
+function castSniper(tower, tier, ctx) {
+  const s = tower.combatStats();
+  const target = tower.acquire(ctx.enemies, ctx);
+  if (!target) return false;
+  const from = muzzleOf(tower);
+  if (tier === 'signature') {
+    // 弱点狙击：280% 伤害，对精英/Boss 额外加成
+    let dmgMul = 2.8;
+    const mods = specializationModifiers(tower);
+    if (mods.signatureDamagePct) dmgMul += mods.signatureDamagePct;
+    if (target.def.rank === 'elite') dmgMul += 0.4;
+    if (target.def.shape === 'boss') dmgMul += 0.6;
+    const dmg = Math.round(s.dmg * dmgMul);
+    ctx.projectiles.spawnHoming(from, target, dmg, s.projSpeed, {
+      ...damageOpts(tower, { damageType: mods.trueDamage ? 'true' : 'physical' }),
+      kind: tower.def.proj, pierce: true,
+    });
+    ctx.fx.flash(from, 0xffea6a, 10, 0.15);
+    return true;
+  }
+  // 狙击标记：目标受到所有来源伤害 +30%
+  if (!target.effects) target.effects = {};
+  target.effects.marked = {
+    sourceTowerId: tower.id,
+    until: ctx.time + 8,
+    allDamagePct: 0.3,
+    sniperDamagePct: 0.25,
+  };
+  ctx.fx.ring(target.pos, 1.5, 0xff4a6a, 0.6);
+  return true;
+}
+
+function castTesla(tower, tier, ctx) {
+  const s = tower.combatStats();
+  if (tier === 'signature') {
+    // 过载：3 秒内攻速 +120%
+    const mods = specializationModifiers(tower);
+    const duration = 3 + (mods.signatureDuration || 0);
+    tower.overloadUntil = ctx.time + duration;
+    tower.overloadRate = 2.2;
+    tower.overloadDamageMul = 0.85;
+    ctx.fx.ring(tower.pos, 1.2, 0x6aaaff, 0.5);
+    return true;
+  }
+  // 电磁脉冲：4.5 格范围伤害 + 减速
+  const radius = 4.5;
+  const targets = targetsInRange(tower, ctx, radius);
+  if (!targets.length) return false;
+  for (const e of targets) {
+    ctx.hitEnemy(e, Math.round(s.dmg * 1.5), {
+      ...damageOpts(tower),
+      effects: { slow: { pct: 0.7, dur: 2.5 } },
+    });
+  }
+  ctx.fx.ring(tower.pos, radius, 0x3a8aff, 0.8);
+  ctx.fx.shockwave?.(tower.pos.clone().setY(0.3), radius);
+  return true;
+}
+
+function castFrost(tower, tier, ctx) {
+  const s = tower.combatStats();
+  if (tier === 'signature') {
+    // 冰环新星：扩大范围的减速 + 伤害
+    const mods = specializationModifiers(tower);
+    const radius = s.range + 1.0;
+    const slowPct = s.slow.pct + 0.15 + (mods.signatureSlowPct || 0);
+    const slowDur = s.slow.dur + 1.5;
+    const targets = targetsInRange(tower, ctx, radius);
+    for (const e of targets) {
+      ctx.hitEnemy(e, Math.round(s.dmg * 0.8), {
+        ...damageOpts(tower),
+        effects: { slow: { pct: Math.min(0.95, slowPct), dur: slowDur } },
+      });
+    }
+    ctx.fx.ring(tower.pos, radius, 0x6ad4ff, 0.7);
+    return true;
+  }
+  // 极寒领域：立即对目标区域造成范围伤害和减速
+  const target = tower.acquire(ctx.enemies, ctx);
+  if (!target) return false;
+  const fieldPos = target.pos.clone();
+  const radius = 4.0;
+  const nearby = ctx.queryEnemiesRadius(fieldPos.x, fieldPos.z, radius, (e) => e.alive);
+  if (!nearby.length) return false;
+  for (const e of nearby) {
+    ctx.hitEnemy(e, Math.round(s.dmg * 2.0), {
+      ...damageOpts(tower),
+      effects: { slow: { pct: 0.75, dur: 6 } },
+    });
+  }
+  ctx.fx.ring(fieldPos, radius, 0x3aa4ff, 0.8);
+  return true;
+}
+
 export function castSkill(tower, tier, ctx) {
   if (!canUseSkill(tower, tier) || ctx.state !== 'combat' || ctx.paused) return false;
-  const ok = tower.key === 'arrow'
-    ? castArrow(tower, tier, ctx)
-    : tower.key === 'venom'
-      ? castVenom(tower, tier, ctx)
-      : tower.key === 'beacon'
-        ? castBeacon(tower, tier, ctx)
-        : false;
+  const casters = {
+    arrow: castArrow, cannon: castCannon, sniper: castSniper,
+    tesla: castTesla, frost: castFrost, venom: castVenom, beacon: castBeacon,
+  };
+  const ok = casters[tower.key]?.(tower, tier, ctx) ?? false;
   if (ok) {
     tower.skillCooldowns[tier] = skillFor(tower, tier).cooldown;
     tower.skillCasts[tier]++;
