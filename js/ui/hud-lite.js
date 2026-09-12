@@ -3,8 +3,11 @@ const IS_TOUCH = typeof matchMedia !== 'undefined' && matchMedia('(pointer: coar
 import { ENEMY_DEFS } from '../game/units.js';
 import { TOWER_DEFS, towerUnlocked } from '../game/towers.js';
 import { skillFor } from '../game/skills.js';
+import { createSpecModal } from './spec-modal.js';
 const icon = (name) => `<img class="tool-icon" src="./vendor/lucide/${name}.svg" alt="">`;
 export function createHud(battle, { audio, onSpeed, onQuit, onPause }) {
+  // G5: 创建专精选择模态框
+  const specModal = createSpecModal();
   const root = document.createElement('div');
   root.id = 'hud';
   root.innerHTML = `
@@ -124,8 +127,11 @@ export function createHud(battle, { audio, onSpeed, onQuit, onPause }) {
         </div>`;
       const up = panel.querySelector('#p-up');
       if (up) up.onclick = () => { if (battle.upgradeSelected()) audio?.upgradeSnd(); };
+      // G5: 专精按钮改为打开模态框
       for (const btn of panel.querySelectorAll('.spec-btn')) btn.onclick = () => {
-        if (battle.upgradeSelected(btn.dataset.branch)) audio?.upgradeSnd();
+        specModal.show(t, (branch) => {
+          if (battle.upgradeSelected(branch)) audio?.upgradeSnd();
+        });
       };
       for (const btn of panel.querySelectorAll('.skill-btn')) btn.onclick = () => {
         if (!battle.useSelectedSkill(btn.dataset.tier)) audio?.click();
