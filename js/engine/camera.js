@@ -9,6 +9,8 @@ export class CameraRig {
     this.pitch = 0.94;    // 约54°
     this.yaw = 0;
     this.dist = 20;
+    this.maxDistance = 160;
+    this.overviewDistance = 40;
 
     this.cur = { focus: new THREE.Vector3(0, 0, 1), yaw: this.yaw, dist: this.dist };
     this.keys = new Set();
@@ -30,7 +32,9 @@ export class CameraRig {
       e.preventDefault();
       this.zoomBy(Math.exp(e.deltaY * 0.0012));
     }, { passive: false });
-    window.addEventListener('keydown', (e) => this.keys.add(e.code));
+    window.addEventListener('keydown', (e) => {
+      if (!e.target?.closest?.('input, textarea, select, button, [contenteditable="true"]')) this.keys.add(e.code);
+    });
     window.addEventListener('keyup', (e) => this.keys.delete(e.code));
     window.addEventListener('blur', () => this.keys.clear());
   }
@@ -42,10 +46,14 @@ export class CameraRig {
       .add(this._horizForward().multiplyScalar(dy * k)));
   }
   zoomBy(factor) {
-    this.dist = THREE.MathUtils.clamp(this.dist * factor, 9, 38);
+    this.dist = THREE.MathUtils.clamp(this.dist * factor, 9, this.maxDistance);
   }
   rotateBy(delta) {
     this.cur.yaw += delta;
+  }
+  focusAt(x, z) {
+    this.cur.focus.x = THREE.MathUtils.clamp(x, this.bounds.minX, this.bounds.maxX);
+    this.cur.focus.z = THREE.MathUtils.clamp(z, this.bounds.minZ, this.bounds.maxZ);
   }
 
   _horizForward() {

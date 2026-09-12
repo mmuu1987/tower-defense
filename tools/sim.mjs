@@ -1,44 +1,36 @@
 #!/usr/bin/env node
-// 纯逻辑平衡模拟器：在 Node 中完整跑战斗（不渲染、无 DOM），快速校准 30 关曲线。
-// 用法: node tools/sim.mjs            # 全 30 关矩阵
+// 纯逻辑平衡模拟器：在 Node 中完整跑战斗（不渲染、无 DOM），快速校准 50 关曲线。
+// 用法: node tools/sim.mjs            # 全 50 关矩阵
 //       node tools/sim.mjs 1 4        # 单关
+//       node tools/sim.mjs 1 8 --g2 --branch=B --seconds=900
 import * as THREE from 'three';
 import { Battle } from '../js/game/battle.js';
 import { FxLayer, makePathSampler } from '../js/game/entities.js';
 import { buildLevel } from '../js/game/levelgen.js';
 import { GRID } from '../js/game/config.js';
+import { createMapLayout } from '../js/game/map-layout.js';
 
 const DT = 1 / 30;          // 模拟步长（原始秒）
 const SPEED = 3;            // 与浏览器 auto 模式一致
-const MAX_GAME_SECONDS = 600;
+const MAX_GAME_SECONDS = Number(/--seconds=(\d+)/.exec(process.argv.join(' '))?.[1]) || 600;
 
 // 与 terrain.js 相同的世界坐标换算与路径格子栅格化
-function pathData(map) {
-  const cw = (cx) => cx - GRID.w / 2 + 0.5;
-  const pts = map.waypoints.map(([cx, cz]) => ({ x: cw(cx), z: (cz - GRID.h / 2 + 0.5) }));
-  const pathCells = new Set();
-  for (let i = 0; i < pts.length - 1; i++) {
-    const a = pts[i], b = pts[i + 1];
-    const steps = Math.ceil(Math.hypot(b.x - a.x, b.z - a.z) / 0.22);
-    for (let s = 0; s <= steps; s++) {
-      const x = a.x + (b.x - a.x) * (s / steps);
-      const z = a.z + (b.z - a.z) * (s / steps);
-      pathCells.add(`${Math.floor(x + GRID.w / 2)},${Math.floor(z + GRID.h / 2)}`);
-    }
-  }
-  return { pts, pathCells };
-}
 
-const COSTS = { arrow: 70, cannon: 110, frost: 90, tesla: 130, sniper: 150 };
-const PLAN = ['arrow', 'frost', 'arrow', 'cannon', 'arrow', 'tesla', 'sniper', 'arrow'];
+const G2 = process.argv.includes('--g2');
+const BRANCH = process.argv.includes('--branch=B') ? 'B' : 'A';
+const PLAN = G2
+  ? ['arrow', 'frost', 'venom', 'cannon', 'arrow', 'beacon', 'sniper', 'tesla']
+  : ['arrow', 'frost', 'arrow', 'cannon', 'arrow', 'tesla', 'sniper', 'arrow'];
 
 function autoStep(battle) {
-  const n = Math.min(battle.towers.length, PLAN.length - 1);
   // 严格建造优先：先铺满 8 座，造不起下一座时才升级
   if (battle.towers.length < PLAN.length) {
-    const key = PLAN[battle.towers.length];
-    if (battle.gold >= COSTS[key]) {
-      const mid = battle.sampler.at(battle.sampler.total * (0.22 + 0.07 * battle.towers.length));
+    const planned = PLAN[battle.towers.length];
+    const key = battle.isTowerUnlocked(planned) ? planned : 'arrow';
+    if (battle.gold >= battle.costOf(key)) {
+      const sampler = G2 ? battle.samplers[battle.towers.length % battle.samplers.length] : battle.sampler;
+      const mid = key === 'beacon' ? battle.towers[2].pos
+        : sampler.at(sampler.total * (0.22 + 0.07 * battle.towers.length));
       outer:
       for (let r = 1; r <= 4; r++) {
         for (let dx = -r; dx <= r; dx++) for (let dz = -r; dz <= r; dz++) {
@@ -57,7 +49,7 @@ function autoStep(battle) {
   const upCand = battle.towers
     .filter((t) => t.canUpgrade())
     .sort((a, b) => a.upgradeCost() - b.upgradeCost())[0];
-  if (upCand && (battle.gold >= upCand.upgradeCost() + 20 || battle.gold > 260)) battle.upgradeTower(upCand);
+  if (upCand && (battle.gold >= upCand.upgradeCost() + 20 || battle.gold > 260)) battle.upgradeTower(upCand, upCand.requiresSpecialization() ? BRANCH : null);
   // 开波
   if (battle.state === 'build' || (battle.state === 'intermission' && battle.intermission < 1.5)) {
     battle.startWave();
@@ -69,9 +61,10 @@ function simulate(w, l) {
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera();
   const fx = new FxLayer(scene);
-  const { pts, pathCells } = pathData(level.map);
+  const layout = createMapLayout(level.map);
+  const samplers = layout.routes.map(makePathSampler);
   const battle = new Battle({
-    scene, level, sampler: makePathSampler(pts), pathCells, fx,
+    scene, level, ...layout, sampler: samplers[0], samplers, fx,
     hooks: { camera },
   });
   battle.speed = SPEED;
@@ -82,7 +75,7 @@ function simulate(w, l) {
     battle.update(DT);
     t += DT * SPEED;
   }
-  return {
+  const result = {
     w, l,
     result: battle.state === 'won' ? 'WIN' : battle.state === 'lost' ? 'LOSS' : 'TIMEOUT',
     lives: battle.lives,
@@ -90,7 +83,14 @@ function simulate(w, l) {
     waves: `${battle.waveIdx + 1}/${level.waves.length}`,
     towers: battle.towers.length,
     goldSpentProxy: battle.towers.reduce((s, x) => s + x.invested, 0),
+    composition: battle.towers.map((tower) => tower.key + ':' + (tower.level + 1) + (tower.specialization || '')).join(' '),
+    skillCasts: battle.towers.reduce((total, tower) => total + tower.skillCasts.signature + tower.skillCasts.ultimate, 0),
+    simulatedSeconds: Math.round(battle.time),
+    activeEnemies: battle.enemies.filter((e) => e.alive).length,
+    pendingSpawns: battle.spawnQueue.length,
   };
+  battle.destroy();
+  return result;
 }
 
 const args = process.argv.slice(2).map(Number);
@@ -107,6 +107,8 @@ for (const r of rows) {
     `${r.w},${String(r.l).padStart(2)} ${r.result.padEnd(7)} ${String(r.lives).padStart(3)} ` +
     `${String(r.kills).padStart(4)} ${r.waves.padEnd(6)} ${r.towers}`,
   );
+  if (G2) console.log('  ' + r.composition + ' | casts=' + r.skillCasts);
+  if (r.result === 'TIMEOUT') console.log('  time=' + r.simulatedSeconds + ' enemies=' + r.activeEnemies + ' pending=' + r.pendingSpawns);
 }
 const wins = rows.filter((r) => r.result === 'WIN').length;
 console.log(`\n胜率: ${wins}/${rows.length}`);

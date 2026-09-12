@@ -1,135 +1,108 @@
-// 40 关难度曲线：世界 w(0..3) 关卡 l(0..9)，d = w*10+l 为难度分
-import { ENEMY_DEFS, BOSS_DEFS } from './units.js';
+// Deterministic wave generation: profiles and budgets are fixed before spawning.
+import { BOSS_DEFS } from './units.js';
 import { mapForLevel } from './maps.js';
+import { enemyProfile, enemyThreat, affixesFor } from './enemy-stats.js';
+import { allocateBudget } from './economy.js';
 
-// —— 平衡常数（集中于此便于调参；tools/econprobe.mjs / balance-probe.mjs 可运行时覆盖做扫描）——
-// 历史问题①：hpMul 曾是关卡常数 → 关卡内越往后敌人相对越弱（波次爬坡已修）。
-// 历史问题②（本轮）：塔在世界 4 即 12 座全满 Lv5 封顶，金币再无出口（世界5 剩金 41200 = 收入 75%），
-//   而敌人 HP 仅 1.048^d→9.95x，玩家总火力（塔数 4x × 单塔 DPS 10~23x）达 40~90x → 中后期零压力。
-//   对策：敌人后期加速爬坡 + 高阶升级提价（造出金币出口）+ 后期收入增速低于 HP 增速。
 export const BALANCE = {
-  startGoldBase: 280,      // 开局基础金
-  startGoldPerWorld: 160,  // 每进一个新世界额外开局金（确保高难度世界开局可直接部署 2-3 级塔）
-  startGoldPerLvl: 18,     // 关卡微增
-  waveSurplusBase: 1.6,    // 关卡内最终波额外强度
-  waveSurplusHalfD: 20,    // 富余衰减半衰期
-  waveRewardFraction: 0.5, // 赏金爬坡 = HP 爬坡 × 此比例
-  earlyCountRamp: 0.65,    // 前三波数量折扣 0.65/0.75/0.85（开局手牌少，先给玩家喘息）
-  earlyGapBonus: 0.20,     // 前两波出怪间隔加宽（每只 +0.20s，给塔留输出窗口）
-  // ——— 难度主曲线（本轮按用户要求：终局约现在的 2 倍，世界1-2 完全不动）———
-  hpBase: 1.048,           // HP 基础指数（世界1-2 手感已验证良好，不动）
-  hpLateFrom: 14,          // 后期加速起点（难度点 d，约世界2中段；之前的关卡零影响）
-  hpLatePow: 1.35,         // 后期加速幂次
-  hpLateK: 0.010,          // 后期加速系数：W3 ×1.1~1.4、W4 ×1.4~1.8、W5 ×1.8~2.2（终局 9.95→22.0）
-  // ——— 经济（收入增速刻意低于 HP 增速，杜绝后期钱花不完）———
-  rewardBase: 1.048,       // 击杀赏金指数：刻意不跟随 HP 后期加速
-                           // → 敌人变硬但赏金不变 = "每点血赚的钱"自然下降，最自然的收紧方式
-  rewardLateK: 0,          // 后期赏金加速（0 = 完全不加速）
-  waveBonusBase: 60,       // 清波奖金基数（保持：高阶升级提价已经吸走富余，不必再砍收入）
-  waveBonusPerWave: 10,    // 每波递增
-  // ——— 数量与速度（制造"波次更密、推进更快"的压迫感，且不像 HP 那样直接放大赏金总量）———
-  countPerD: 0.03,         // 数量随难度线性增长
-  countLateFrom: 20,       // 数量后期加速起点
-  countLateK: 0.012,       // 数量后期加速系数
-  speedCap: 0.26,          // 移速上限增幅（原 0.18）
-  speedPerD: 0.005,        // 移速增速（原 0.004）
+  startGoldBase: 400,
+  startGoldPerWorld: 220,
+  startGoldPerLvl: 30,
+  extraRouteGold: 140,
+  incomeBase: 120,
+  incomePerDifficulty: 30,
+  incomePerWave: 24,
+  incomeWaveDifficulty: 1.2,
+  bountyFraction: 0.62,
+  earlyFraction: 0.15,
+  threatScale: 1,
+  economyScale: 1,
+  enemyLevelOffset: 0,
 };
 
 export function buildLevel(worldIdx, lvlIdx, overrides = {}) {
+  if (!Number.isInteger(worldIdx) || worldIdx < 0 || worldIdx > 4 || !Number.isInteger(lvlIdx) || lvlIdx < 0 || lvlIdx > 9) throw new Error('Invalid level coordinates');
+  for (const [key, value] of Object.entries(overrides)) if (!(key in BALANCE) || !Number.isFinite(value)) throw new Error('Unknown or invalid balance option: ' + key);
+  const cfg = { ...BALANCE, ...overrides };
+  if (Object.values(cfg).some((v) => !Number.isFinite(v)) || cfg.threatScale <= 0 || cfg.economyScale <= 0 ||
+      cfg.bountyFraction < 0 || cfg.bountyFraction > 1 || cfg.earlyFraction < 0 || cfg.earlyFraction > 0.15 ||
+      Object.entries(cfg).some(([key, v]) => key !== 'enemyLevelOffset' && v < 0)) throw new Error('Invalid balance parameters');
   const d = worldIdx * 10 + lvlIdx;
-  // 波次长度：6 波（第 1 世界）→ 15 波（第 5 世界），每小关耗时 2.5~4 分钟节奏紧凑
+  const map = mapForLevel(worldIdx, lvlIdx);
+  const routeCount = map.routes.length;
   const waveCount = 6 + Math.floor(d / 4.5);
-  // HP 曲线：前期温和指数，中后期加速——对冲"塔封顶后火力过剩"
-  const lateD = Math.max(0, d - BALANCE.hpLateFrom);
-  const hpLateMul = 1 + Math.pow(lateD, BALANCE.hpLatePow) * BALANCE.hpLateK;
-  const hpMul = Math.pow(BALANCE.hpBase, d) * hpLateMul;
-  const speedMul = 1 + Math.min(BALANCE.speedCap, d * BALANCE.speedPerD);
-  // 赏金：只走基础指数（+可选后期加速），刻意慢于 HP → 后期金币变紧
-  const rewardLateD = Math.max(0, d - BALANCE.hpLateFrom);
-  const rewardMul = Math.pow(BALANCE.rewardBase, d) *
-    (1 + Math.pow(rewardLateD, BALANCE.hpLatePow) * BALANCE.rewardLateK);
-  // 数量：线性 + 后期加速（波次更密）
-  const countLateD = Math.max(0, d - BALANCE.countLateFrom);
-  const countMul = 1 + d * BALANCE.countPerD + countLateD * BALANCE.countLateK;
-
-  // 关卡内波次 HP 爬坡：把"最终波额外强度"摊到各波（前两波免爬坡，见 battle.startWave）。
-  const surplus = BALANCE.waveSurplusBase / (1 + d / BALANCE.waveSurplusHalfD);
-  const waveHpRamp = surplus / Math.max(4, waveCount - 2);
-  const waveRewardRamp = waveHpRamp * BALANCE.waveRewardFraction;
-
-  const pool = ['grunt'];
-  if (d >= 2) pool.push('runner');
-  if (d >= 4) pool.push('tank');
-  if (d >= 5) pool.push('flyer');
-  if (d >= 8) pool.push('healer');
-  if (d >= 12) pool.push('splitter');
-  // —— 扩充包：新怪物按难度逐步入池 ——
-  if (d >= 13) pool.push('fox');
-  if (d >= 15) pool.push('flamingo');
-  if (d >= 17) pool.push('mummy');
-  if (d >= 19) pool.push('stork');
-  if (d >= 21) pool.push('dancer');
-
-  // 开局先锋怪池：前两波永远只刷基础步兵/疾行者，杜绝首波直接出高甲肉盾/萨满/极速灵狐导致开局崩盘
-  const starterPool = (d >= 2) ? ['grunt', 'runner'] : ['grunt'];
-
+  const baseEnemyLevel = Math.max(1, Math.min(100, 1 + Math.floor(d * 1.8) + Math.trunc(cfg.enemyLevelOffset)));
+  const unlocks = [['grunt', 0], ['runner', 2], ['tank', 4], ['flyer', 5], ['healer', 8], ['splitter', 12],
+    ['fox', 13], ['flamingo', 15], ['mummy', 17], ['stork', 19], ['dancer', 21]];
+  const pool = unlocks.filter(([, at]) => d >= at).map(([type]) => type);
+  const starterPool = d >= 2 ? ['grunt', 'runner'] : ['grunt'];
   const waves = [];
   for (let w = 0; w < waveCount; w++) {
+    const level = Math.min(100, baseEnemyLevel + Math.floor(w * 0.7));
+    const boss = lvlIdx === 9 && w === waveCount - 1;
+    const active = w < 2 ? starterPool : pool;
+    const main = w === 0 ? starterPool[lvlIdx % starterPool.length] : active[Math.floor(w * 0.7 + lvlIdx) % active.length];
+    const sub = active[(w + lvlIdx + 1) % active.length];
+    const standard = enemyProfile('grunt', { enemyLevel: level });
+    const slots = Math.max(4, Math.round((5 + w * 0.8 + lvlIdx * 0.4) * (1 + d * 0.017) * (w < 3 ? 0.7 + w * 0.1 : 1)));
+    const baseThreat = enemyThreat(standard) * (slots + (w % 2 ? Math.round(slots * 0.25) : 0)) * cfg.threatScale;
+    const bossProfile = boss ? enemyProfile(Object.keys(BOSS_DEFS)[worldIdx], { enemyLevel: Math.min(100, level + 2) }) : null;
+    const threatBudget = Math.ceil((boss ? enemyThreat(bossProfile) + baseThreat * 0.7 : baseThreat) * 1000) / 1000;
+    const income = Math.round((cfg.incomeBase + d * cfg.incomePerDifficulty + w * (cfg.incomePerWave + d * cfg.incomeWaveDifficulty)) * cfg.economyScale);
+    const bounty = Math.floor(income * cfg.bountyFraction);
+    const budget = { threat: threatBudget, income, bounty, clear: income - bounty, early: Math.floor(income * cfg.earlyFraction) };
+    let remaining = threatBudget;
     const groups = [];
-    const isBossWave = lvlIdx === 9 && w === waveCount - 1;
-    const isElite = lvlIdx >= 5 && w === Math.floor(waveCount / 2);
-
-    if (isBossWave) {
-      groups.push({ type: Object.keys(BOSS_DEFS)[worldIdx], count: 1, gap: 0, delay: 0.8 });
-      const escort = pool[Math.min(pool.length - 1, 1)];
-      groups.push({ type: escort, count: Math.round(6 * countMul), gap: 0.9, delay: 3 });
-      waves.push({ groups, boss: true });
-      continue;
+    const add = (profile, count, gap, delay) => {
+      const cost = enemyThreat(profile);
+      count = Math.min(count, Math.floor((remaining + 1e-7) / cost));
+      if (count <= 0) return;
+      groups.push({ type: profile.type, count, gap, delay, profile, threat: cost * count });
+      remaining = Math.max(0, remaining - cost * count);
+    };
+    if (boss) add(bossProfile, 1, 0, 0.8);
+    else if (d >= 6 && w >= 2 && (w === Math.floor(waveCount / 2) || (d >= 20 && w % 3 === 2))) {
+      const elite = enemyProfile(main, { enemyLevel: Math.min(100, level + 1), rank: 'elite', affixes: affixesFor(d, w, map.seed) });
+      if (remaining >= enemyThreat(elite) + enemyThreat(standard) * 2) add(elite, d >= 30 ? 2 : 1, 2.2, 4);
     }
-
-    // 基础波：前 2 波使用 starterPool 先锋池，第 3 波起开放全怪池
-    const activePool = (w < 2) ? starterPool : pool;
-    const main = (w === 0)
-      ? starterPool[lvlIdx % starterPool.length]
-      : activePool[Math.floor((w * 0.7 + lvlIdx)) % activePool.length];
-
-    // 开局软化：前三波数量打折（玩家手牌少，先给喘息），第 4 波起恢复全量
-    const earlyCount = w >= 3 ? 1 : BALANCE.earlyCountRamp + 0.10 * w;
-    const mainCount = Math.max(4, Math.round((5 + w * 0.8 + lvlIdx * 0.4) * countMul * earlyCount));
-    // 前两波出怪间隔加宽：拉开首波血量洪峰，初始 2-3 座塔也接得住
-    const earlyGap = w < 2 ? (2 - w) * BALANCE.earlyGapBonus : 0;
-    groups.push({ type: main, count: mainCount, gap: Math.max(0.75, 1.15 - w * 0.04) + earlyGap, delay: 0.5 });
-
-    if (activePool.length > 1 && w % 2 === 1) {
-      const sub = activePool[(w + lvlIdx + 1) % activePool.length];
-      if (sub !== main) {
-        groups.push({ type: sub, count: Math.round(mainCount * 0.35), gap: 0.85, delay: 5.5 });
-      }
+    const mainProfile = enemyProfile(boss ? starterPool[starterPool.length - 1] : main, { enemyLevel: level });
+    const mainCost = enemyThreat(mainProfile);
+    const mixed = !boss && w % 2 === 1 && sub !== main;
+    const gap = Math.max(0.7, 1.15 - w * 0.025) + (w < 2 ? (2 - w) * 0.2 : 0);
+    if (remaining >= mainCost) add(mainProfile, Math.max(1, Math.floor(remaining * (mixed ? 0.72 : 1) / mainCost)), gap, boss ? 3 : 0.5);
+    if (mixed) {
+      const subProfile = enemyProfile(sub, { enemyLevel: level });
+      add(subProfile, Math.floor(remaining / enemyThreat(subProfile)), 0.95, 5.5);
     }
-    if (isElite && w >= 2) {
-      groups.push({ type: 'tank', count: 2 + Math.floor(d / 15), gap: 2.2, delay: 8 });
-    }
-    waves.push({ groups });
+    if (!groups.length) add(standard, 1, gap, 0.5);
+    // Small residual budgets remain unspent rather than creating an extra pressure spike.
+    const tickets = [];
+    groups.forEach((g, gi) => { for (let i = 0; i < g.count; i++) tickets.push({ group: gi, unit: i, weight: g.profile.rewardWeight }); });
+    const shares = allocateBudget(bounty, tickets.map((ticket) => ticket.weight));
+    const routes = Array(routeCount).fill(0);
+    groups.forEach((g, gi) => {
+      g.id = 'wave-' + w + ':group-' + gi;
+      g.bounties = []; g.routes = [];
+    });
+    tickets.forEach((ticket, i) => {
+      const group = groups[ticket.group];
+      const route = (i + w) % routeCount;
+      group.bounties.push(shares[i]); group.routes.push(route); routes[route]++;
+    });
+    waves.push({ groups, boss, budget, threatSpent: threatBudget - remaining, routeCounts: routes,
+      levelRange: [Math.min(...groups.map((g) => g.profile.enemyLevel)), Math.max(...groups.map((g) => g.profile.enemyLevel))],
+      duration: Math.max(...groups.map((g) => g.delay + (g.count - 1) * g.gap)) });
   }
-
   return {
-    worldIdx, lvlIdx,
-    name: `第${worldIdx + 1}世界 · 第${lvlIdx + 1}关`,
-    map: mapForLevel(worldIdx, lvlIdx),
-    waves,
-    hpMul, speedMul, rewardMul,
-    waveHpRamp: overrides.waveHpRamp ?? waveHpRamp,        // 关卡内波次爬坡（battle 按波应用）
-    waveRewardRamp: overrides.waveRewardRamp ?? waveRewardRamp,
-    startGold: BALANCE.startGoldBase + worldIdx * BALANCE.startGoldPerWorld + lvlIdx * BALANCE.startGoldPerLvl,
-    waveBonusBase: BALANCE.waveBonusBase,
-    waveBonusPerWave: BALANCE.waveBonusPerWave,
-    lives: 20,
-    intermission: 6,
-    unlockPool: pool,
+    worldIdx, lvlIdx, name: (worldIdx + 1) + '-' + (lvlIdx + 1) + ' · ' + map.name,
+    map, waves, baseEnemyLevel, schemaVersion: 3,
+    startGold: Math.round(cfg.startGoldBase + worldIdx * cfg.startGoldPerWorld + lvlIdx * cfg.startGoldPerLvl + (routeCount - 1) * cfg.extraRouteGold),
+    lives: 20, intermission: 6, unlockPool: pool,
+    budget: { income: waves.reduce((sum, wave) => sum + wave.budget.income, 0),
+      bounty: waves.reduce((sum, wave) => sum + wave.budget.bounty, 0), clear: waves.reduce((sum, wave) => sum + wave.budget.clear, 0) },
   };
 }
 
-// 三星标准
 export function starsFor(lives, maxLives) {
   const r = lives / maxLives;
   if (r >= 0.999) return 3;

@@ -1,6 +1,8 @@
 // 地形系统：多级落差阶梯台地、悬崖岩层断壁、外围深渊峡谷与远景环形群山
 import * as THREE from 'three';
-import { GRID, cellToWorldX, cellToWorldZ } from '../game/config.js';
+import { GRID, MAP_LINEAR_SCALE } from '../game/config.js';
+import { createMapLayout, seededRandom } from '../game/map-layout.js';
+import { createLandscape } from './landscape.js';
 
 export const worldToCell = (x, z) => ({
   cx: Math.floor(x / GRID.cell + GRID.w / 2),
@@ -114,9 +116,9 @@ function buildRibbonGeometry(ptsWorld, width) {
 }
 
 // —— 远景群山生成器（坐落于北侧地平线与远景天际线，打造广袤壮阔的纵深感）——
-function createDistantMountains(theme, halfW, halfH) {
+function createDistantMountains(theme, halfW, halfH, rng) {
   const group = new THREE.Group();
-  const mountainCount = 18;
+  const mountainCount = Math.ceil(18 * Math.sqrt(MAP_LINEAR_SCALE));
 
   // 主题配色方案（山体岩石色 + 顶峰受光色）
   const colors = {
@@ -128,14 +130,14 @@ function createDistantMountains(theme, halfW, halfH) {
   }[theme.id] || { base: 0x333333, top: 0x666666, snow: 0xaaaaaa };
 
   for (let i = 0; i < mountainCount; i++) {
-    // 均匀分布于北侧远景扇面（-Z 远方：X 范围 -32 ~ +32, Z 范围 -24 ~ -44）
+    // Keep the skyline beyond the expanded playfield.
     const frac = (i + 0.5) / mountainCount;
-    const x = -34 + frac * 68 + (Math.random() - 0.5) * 4.0;
-    const z = -22 - Math.sin(frac * Math.PI) * 16 - Math.random() * 8;
+    const x = (frac * 2 - 1) * (halfW + 23) + (rng() - 0.5) * 4.0;
+    const z = -halfH - 17.5 - Math.sin(frac * Math.PI) * 16 - rng() * 8;
 
-    const h = 10 + Math.random() * 14;
-    const w = 11 + Math.random() * 13;
-    const segments = 4 + Math.floor(Math.random() * 3);
+    const h = 7 + rng() * 12;
+    const w = 7 + rng() * 9;
+    const segments = 5 + Math.floor(rng() * 3);
 
     const geo = new THREE.ConeGeometry(w, h, segments);
     const pos = geo.attributes.position;
@@ -166,8 +168,8 @@ function createDistantMountains(theme, halfW, halfH) {
     });
     const mesh = new THREE.Mesh(geo, mat);
     mesh.position.set(x, h * 0.36 - 2.8, z);
-    mesh.rotation.y = Math.random() * Math.PI * 2;
-    mesh.scale.set(1 + Math.random() * 0.3, 1, 0.7 + Math.random() * 0.5);
+    mesh.rotation.y = rng() * Math.PI * 2;
+    mesh.scale.set(1 + rng() * 0.3, 1, 0.7 + rng() * 0.5);
     group.add(mesh);
   }
 
@@ -175,7 +177,7 @@ function createDistantMountains(theme, halfW, halfH) {
 }
 
 // —— 外围深渊峡谷与浮岛悬崖断层 ——
-function createPerimeterCanyon(theme, halfW, halfH) {
+function createPerimeterCanyon(theme, halfW, halfH, rng) {
   const group = new THREE.Group();
   const canyonWidth = 32;
   const outerW = (halfW + canyonWidth) * 2;
@@ -226,7 +228,7 @@ function createPerimeterCanyon(theme, halfW, halfH) {
     const pos = wallGeo.attributes.position;
     for (let i = 0; i < pos.count; i++) {
       if (pos.getY(i) < 0) {
-        pos.setZ(i, (Math.random() - 0.5) * 0.35);
+        pos.setZ(i, (rng() - 0.5) * 0.35);
       }
     }
     wallGeo.computeVertexNormals();
@@ -241,52 +243,16 @@ function createPerimeterCanyon(theme, halfW, halfH) {
 
 export async function buildTerrain({ theme, map }) {
   const group = new THREE.Group();
+  group.name = 'battlefield-terrain';
   const halfW = GRID.w / 2, halfH = GRID.h / 2;
-
-  // 1) 路径世界坐标点与段表
-  const pts = map.waypoints.map(([cx, cz]) => ({ x: cellToWorldX(cx), z: cellToWorldZ(cz) }));
-  const psegs = [];
-  for (let i = 0; i < pts.length - 1; i++) {
-    const a = pts[i], b = pts[i + 1];
-    const dx = b.x - a.x, dz = b.z - a.z;
-    const len = Math.hypot(dx, dz) || 1;
-    psegs.push({ ax: a.x, az: a.z, dx: dx / len, dz: dz / len, len });
-  }
-  const distToPath = (wx, wz) => {
-    let best = Infinity;
-    for (const s of psegs) {
-      const t = THREE.MathUtils.clamp((wx - s.ax) * s.dx + (wz - s.az) * s.dz, 0, s.len);
-      const dd = Math.hypot(wx - (s.ax + s.dx * t), wz - (s.az + s.dz * t));
-      if (dd < best) best = dd;
-    }
-    return best;
-  };
-
-  // 路径格子标记
-  const pathCells = new Set();
-  for (let i = 0; i < pts.length - 1; i++) {
-    const a = pts[i], b = pts[i + 1];
-    const steps = Math.ceil(Math.hypot(b.x - a.x, b.z - a.z) / (GRID.cell * 0.22));
-    for (let s = 0; s <= steps; s++) {
-      const x = a.x + (b.x - a.x) * (s / steps);
-      const z = a.z + (b.z - a.z) * (s / steps);
-      const { cx, cz } = worldToCell(x, z);
-      pathCells.add(`${cx},${cz}`);
-    }
-  }
+  const layout = createMapLayout(map);
+  const { pts, routes, heightAt, waterDistance } = layout;
+  const rng = seededRandom(map.seed);
 
   // 2) 高清多级落差阶梯地面（台地梯田、山峦高地、深谷路基）
-  const groundTex = await loadTexture(theme.groundTex, theme.groundFallback, [20, 16]);
+  const groundTex = await loadTexture(theme.groundTex, theme.groundFallback, [GRID.w * 9 / 22, GRID.h * 7 / 15]);
   const GW = (halfW + 0.8) * 2, GH = (halfH + 0.8) * 2;
-  const groundGeo = new THREE.PlaneGeometry(GW, GH, 84, 64);
-
-  const noise = (x, z) => {
-    let v = 0;
-    v += Math.sin(x * 0.32 + Math.sin(z * 0.24) * 2.0) * 0.5;
-    v += Math.sin(z * 0.42 - Math.cos(x * 0.18) * 1.6) * 0.3;
-    v += Math.sin((x * 1.1 + z * 0.8) * 0.6) * 0.2;
-    return v;
-  };
+  const groundGeo = new THREE.PlaneGeometry(GW, GH, Math.ceil(GW * 4.6), Math.ceil(GH * 4.6));
 
   {
     const posA = groundGeo.attributes.position;
@@ -303,22 +269,15 @@ export async function buildTerrain({ theme, map }) {
     for (let i = 0; i < posA.count; i++) {
       const lx = posA.getX(i), ly = posA.getY(i);
       const wx = lx, wz = -ly;
-      const dpath = distToPath(wx, wz);
-
-      // 多层阶梯落差体系：
-      // - 路径路基区（d < 0.85m）：平滑嵌入 y = 0
-      // - 旷野隆起山丘（d >= 0.85m）：柔和起伏高地（y = 0.05m ~ 0.55m）
-      let height = 0;
-      if (dpath >= 0.85) {
-        const hill = Math.max(0, noise(wx * 0.38, wz * 0.38) + 0.2);
-        const dFac = THREE.MathUtils.clamp((dpath - 0.85) / 1.8, 0, 1);
-        height = dFac * (hill * 0.45 + 0.04);
-      }
+      const height = heightAt(wx, wz);
 
       posA.setZ(i, height);
 
       // 顶点高程受光着色（平原基色 → 丘陵顶峰阳光高光）
       const c = new THREE.Color().copy(baseColor);
+      const patch = (Math.sin(wx * 0.65 + map.seed) * Math.cos(wz * 0.8) + 1) / 2;
+      c.multiplyScalar(0.8 + patch * 0.28);
+      if (waterDistance(wx, wz) < 0.85) c.lerp(new THREE.Color(theme.id === 'frost' ? 0x688f9b : 0x697064), 0.45);
       if (height > 0.08) {
         const frac = THREE.MathUtils.clamp((height - 0.08) / 0.45, 0, 1);
         c.lerp(peakColor, frac * 0.7);
@@ -344,57 +303,64 @@ export async function buildTerrain({ theme, map }) {
   group.add(ground);
 
   // 3) 环绕式近景与远景群山（显著提升天际线纵深感）
-  const mountains = createDistantMountains(theme, halfW, halfH);
+  const mountains = createDistantMountains(theme, halfW, halfH, rng);
   group.add(mountains);
 
   // 4) 外围悬崖深渊水系与断层岩壁
-  const perimeterCanyon = createPerimeterCanyon(theme, halfW, halfH);
+  const perimeterCanyon = createPerimeterCanyon(theme, halfW, halfH, rng);
   group.add(perimeterCanyon);
 
   // 5) 路径丝带：路肩基底 → 凹凸石质镶边 → 主石板路面（立体嵌入式路面）
   const dirtMat = new THREE.MeshStandardMaterial({ color: theme.pathTint, roughness: 1 });
   dirtMat.color.multiplyScalar(0.7);
-  const shoulder = new THREE.Mesh(buildRibbonGeometry(pts, 1.6), dirtMat);
-  shoulder.position.y = 0.015; shoulder.receiveShadow = true;
-
   const pathTex = await loadTexture('./assets/textures/stone.jpg', 'rock', [2.0, 2.0]);
-  const edgeMat = new THREE.MeshStandardMaterial({ color: 0x221c18, roughness: 1 });
-  const edge = new THREE.Mesh(buildRibbonGeometry(pts, 1.2), edgeMat);
-  edge.position.y = 0.022; edge.receiveShadow = true;
-
-  const road = new THREE.Mesh(
-    buildRibbonGeometry(pts, 0.96),
-    new THREE.MeshStandardMaterial({ map: pathTex, color: theme.pathTint, roughness: 0.85 }),
-  );
-  road.position.y = 0.032; road.receiveShadow = true;
+  const edgeMat = new THREE.MeshStandardMaterial({ color: theme.id === 'frost' ? 0x688895 : 0x625c50, roughness: 1 });
+  const roadMat = new THREE.MeshStandardMaterial({ map: pathTex, color: theme.pathTint, roughness: 0.85 });
+  routes.forEach((route, i) => {
+    const shoulder = new THREE.Mesh(buildRibbonGeometry(route, 1.5), dirtMat);
+    const edge = new THREE.Mesh(buildRibbonGeometry(route, 1.18), edgeMat);
+    const road = new THREE.Mesh(buildRibbonGeometry(route, 0.96), roadMat);
+    shoulder.position.y = 0.015 + i * 0.001;
+    edge.position.y = 0.022 + i * 0.001;
+    road.position.y = 0.032 + i * 0.001;
+    road.name = `route-${i}`;
+    for (const mesh of [shoulder, edge, road]) mesh.receiveShadow = true;
+    group.add(shoulder, edge, road);
+  });
 
   // 5b) 路面碎石与磨损细节
   {
-    const pebbleCount = 80;
+    const pebbleCount = Math.round(80 * MAP_LINEAR_SCALE);
     const geo = new THREE.DodecahedronGeometry(0.075, 0);
     const mat = new THREE.MeshStandardMaterial({ color: 0x787064, roughness: 1, flatShading: true });
     const im = new THREE.InstancedMesh(geo, mat, pebbleCount);
     im.receiveShadow = true;
     const dummy = new THREE.Object3D();
     for (let i = 0; i < pebbleCount; i++) {
-      const segIdx = Math.floor(Math.random() * (pts.length - 1));
-      const t = Math.random();
-      const x = pts[segIdx].x + (pts[segIdx + 1].x - pts[segIdx].x) * t + (Math.random() - 0.5) * 0.65;
-      const z = pts[segIdx].z + (pts[segIdx + 1].z - pts[segIdx].z) * t + (Math.random() - 0.5) * 0.65;
+      const route = routes[i % routes.length];
+      const segIdx = Math.floor(rng() * (route.length - 1));
+      const t = rng();
+      const x = route[segIdx].x + (route[segIdx + 1].x - route[segIdx].x) * t + (rng() - 0.5) * 0.65;
+      const z = route[segIdx].z + (route[segIdx + 1].z - route[segIdx].z) * t + (rng() - 0.5) * 0.65;
       dummy.position.set(x, 0.045, z);
-      dummy.rotation.set(Math.random() * 3, Math.random() * 3, Math.random() * 3);
-      dummy.scale.setScalar(0.5 + Math.random() * 0.9);
+      dummy.rotation.set(rng() * 3, rng() * 3, rng() * 3);
+      dummy.scale.setScalar(0.5 + rng() * 0.9);
       dummy.updateMatrix();
       im.setMatrixAt(i, dummy.matrix);
     }
     im.instanceMatrix.needsUpdate = true;
     group.add(im);
   }
-  group.add(shoulder, edge, road);
+  const landscape = createLandscape({ theme, layout, rng });
+  group.add(landscape.group);
 
   // 6) 出入口传送门（泛光高亮与能量光环）
   const mkPortal = (p, colorHex) => {
     const gp = new THREE.Group();
+    const base = new THREE.Mesh(new THREE.CylinderGeometry(0.86, 1.03, 0.55, 8),
+      new THREE.MeshStandardMaterial({ color: 0x788080, roughness: 0.88 }));
+    base.position.y = -0.21;
+    base.receiveShadow = true;
     const ring = new THREE.Mesh(
       new THREE.TorusGeometry(0.65, 0.1, 10, 36),
       new THREE.MeshStandardMaterial({ color: 0x22252c, emissive: colorHex, emissiveIntensity: 2.1, roughness: 0.3 }),
@@ -409,12 +375,12 @@ export async function buildTerrain({ theme, map }) {
     disc.position.y = 0.05;
     const light = new THREE.PointLight(colorHex, 7, 5);
     light.position.y = 0.7;
-    gp.add(ring, disc, light);
+    gp.add(base, ring, disc, light);
     gp.position.set(p.x, 0, p.z);
     return gp;
   };
   group.add(mkPortal(pts[0], theme.accent));
   group.add(mkPortal(pts[pts.length - 1], 0xff5d5d));
 
-  return { group, pathCells, pts };
+  return { ...layout, group, ground, update: landscape.update };
 }

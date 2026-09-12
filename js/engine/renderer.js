@@ -18,13 +18,13 @@ export function createRenderer(preset) {
 // 方向光（太阳）：静态包围整个地图的阴影相机，稳定且省性能
 export function createSunLights(theme, preset, mapHalfW, mapHalfH) {
   const sun = new THREE.DirectionalLight(theme.sunColor, theme.sunIntensity);
-  sun.position.set(mapHalfW * 0.7 + 8, 22, mapHalfH * 0.7 + 8);
+  sun.position.set(mapHalfW * 0.7 + 8, Math.max(22, mapHalfW * 1.8), mapHalfH * 0.7 + 8);
   sun.castShadow = true;
   sun.shadow.mapSize.set(preset.shadowMapSize, preset.shadowMapSize);
   const s = sun.shadow.camera;
   s.left = -mapHalfW - 8; s.right = mapHalfW + 8;
   s.top = mapHalfH + 8; s.bottom = -mapHalfH - 8;
-  s.near = 2; s.far = 70;
+  s.near = 2; s.far = Math.max(70, Math.hypot(mapHalfW, mapHalfH) * 4);
   sun.shadow.bias = -0.0006;
   sun.shadow.normalBias = 0.02;
   const hemi = new THREE.HemisphereLight(theme.hemiSky, theme.hemiGround, theme.hemiIntensity);

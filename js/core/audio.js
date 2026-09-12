@@ -133,6 +133,14 @@ export class AudioEngine {
   upgradeSnd() {
     [523, 659, 784].forEach((f, i) => this.tone({ f, type: 'triangle', dur: 0.12, vol: 0.12, delay: i * 0.07 }));
   }
+  skill(key, tier) {
+    if (!this.throttle('skill-' + key, 180)) return;
+    if (key === 'venom') this.noise({ dur: 0.35, vol: 0.13, f: 1400, f2: 380, q: 2 });
+    else if (key === 'beacon') {
+      [392, 587, 784].forEach((f, i) => this.tone({ f, type: 'sine', dur: 0.2, vol: 0.07, delay: i * 0.05 }));
+    } else this.shoot('arrow');
+    if (tier === 'ultimate') this.tone({ f: 260, f2: 780, type: 'triangle', dur: 0.3, vol: 0.1 });
+  }
   sell() {
     this.tone({ f: 500, f2: 240, type: 'triangle', dur: 0.16, vol: 0.12 });
   }

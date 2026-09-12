@@ -1,8 +1,11 @@
 // 战斗实体：路径采样 / 敌人 / 防御塔 / 弹道 / 轻量特效层
 import * as THREE from 'three';
 import { createEnemyMesh } from './units.js';
-import { createTowerMesh, statsFor, TOWER_DEFS } from './towers.js';
+import { createTowerMesh, updateTowerAppearance, statsFor, towerCost, TOWER_DEFS } from './towers.js';
 import { hasEnemyModel, makeEnemyInstance } from '../engine/modellib.js';
+import { compareScores, resolveDamage, targetMatches, targetScore, xzDistanceSq } from './combat.js';
+import { clearEffects, updateEffects, poisonStacks } from './effects.js';
+import { autoSkillTiers, canUseSkill, castSkill, skillFor, specializationFor, specializationModifiers } from './skills.js';
 
 let _id = 0;
 const _tan = new THREE.Vector3();
@@ -14,24 +17,33 @@ export function makePathSampler(pts) {
   for (let i = 0; i < pts.length - 1; i++) {
     const a = pts[i], b = pts[i + 1];
     const len = Math.hypot(b.x - a.x, b.z - a.z);
+    if (len < 1e-8) continue;
     segs.push({ ax: a.x, az: a.z, dx: (b.x - a.x) / len, dz: (b.z - a.z) / len, len, start: total });
     total += len;
   }
+  if (!segs.length) throw new Error('A route must contain at least two distinct points');
+  const segmentAt = (d) => {
+    let lo = 0, hi = segs.length - 1;
+    while (lo < hi) {
+      const mid = Math.floor((lo + hi + 1) / 2);
+      if (segs[mid].start <= d) lo = mid;
+      else hi = mid - 1;
+    }
+    return segs[lo];
+  };
   return {
     total,
     at(dist, out = new THREE.Vector3()) {
       const d = THREE.MathUtils.clamp(dist, 0, total);
-      let s = segs[0];
-      for (const seg of segs) { if (d >= seg.start && d <= seg.start + seg.len) { s = seg; break; } }
+      const s = segmentAt(d);
       const t = d - s.start;
       out.set(s.ax + s.dx * t, 0, s.az + s.dz * t);
       return out;
     },
     tangentAt(dist, out = new THREE.Vector3()) {
       const d = THREE.MathUtils.clamp(dist, 0, total);
-      for (const seg of segs) { if (d >= seg.start && d <= seg.start + seg.len) { return out.set(seg.dx, 0, seg.dz); } }
-      const last = segs[segs.length - 1];
-      return out.set(last.dx, 0, last.dz);
+      const s = segmentAt(d);
+      return out.set(s.dx, 0, s.dz);
     },
   };
 }
@@ -45,14 +57,52 @@ const HPBAR_MATS = {
 
 // ———— 敌人 ————
 export class Enemy {
-  constructor(def, { sampler, hpMul = 1, rewardMul = 1, speedMul = 1 }) {
+  constructor(def, { sampler, profile = null, ticket = null, hpMul = 1, rewardMul = 1, speedMul = 1 }) {
     this.id = ++_id;
     this.def = def;
     this.sampler = sampler;
-    this.maxHp = Math.round(def.hp * hpMul);
-    this.hp = this.maxHp;
-    this.reward = Math.max(1, Math.round(def.reward * rewardMul));
-    this.baseSpeed = def.speed * speedMul;
+    this.profile = profile;
+    this.ticket = ticket;
+    this.generation = 0; // 召唤代数（用于限制无限递归）
+    // G3: 优先使用 profile 数据，否则回退到旧的倍率系统（兼容测试和旧代码）
+    if (profile) {
+      this.maxHp = profile.hp;
+      this.hp = this.maxHp;
+      this.armor = profile.armor ?? 0;
+      this.resistance = profile.resistance ?? 0;
+      this.baseSpeed = profile.speed;
+      this.effectiveSpeed = this.baseSpeed;
+      this.controlResistance = profile.controlResistance ?? 0;
+      this.regen = profile.regen ?? 0;
+      this.rank = profile.rank ?? 'normal';
+      this.affixes = profile.affixes ?? [];
+      this.enemyLevel = profile.enemyLevel ?? 1;
+      // 护盾
+      this.shieldMax = profile.shield ? profile.shield.hp : 0;
+      this.shield = this.shieldMax;
+      this.shieldT = profile.shield ? profile.shield.cd : 0;
+      // 治疗
+      this.healRadius = profile.heal ? profile.heal.radius : 0;
+      this.healHps = profile.heal ? profile.heal.hps : 0;
+    } else {
+      // 旧路径：使用倍率
+      this.maxHp = Math.round(def.hp * hpMul);
+      this.hp = this.maxHp;
+      this.armor = def.armor ?? 0;
+      this.resistance = def.resistance ?? 0;
+      this.baseSpeed = def.speed * speedMul;
+      this.effectiveSpeed = this.baseSpeed;
+      this.controlResistance = 0;
+      this.regen = 0;
+      this.rank = 'normal';
+      this.affixes = [];
+      this.enemyLevel = 1;
+      this.shieldMax = def.shield ? Math.round(def.shield.hp * hpMul) : 0;
+      this.shield = this.shieldMax;
+      this.shieldT = def.shield ? def.shield.cd : 0;
+      this.healRadius = def.heal ? def.heal.radius : 0;
+      this.healHps = def.heal ? def.heal.hps : 0;
+    }
     this.dist = def.fly ? sampler.total * 0 : 0;
     this.alive = true;
     this.dying = false;      // 死亡动画播放中（不可索敌/不再移动）
@@ -65,11 +115,9 @@ export class Enemy {
     this.yawOff = 0;
     this.slowPct = 0; this.slowT = 0;
     this.healCd = 1;
+    this.healSuppressedT = 0;
+    this.effects = {};
     this.age = 0;
-    // Boss 技能状态
-    this.shieldMax = def.shield ? Math.round(def.shield.hp * hpMul) : 0;
-    this.shield = this.shieldMax;
-    this.shieldT = def.shield ? def.shield.cd : 0;
 
     this.pos = new THREE.Vector3();
     let procedural = true;
@@ -115,6 +163,7 @@ export class Enemy {
     if (!this.alive || this.dying) return;
     this.alive = false;
     this.dying = true;
+    clearEffects(this);
     this.deathT = this.actions?.death ? 1.2 : 0.55;
     if (this.mixer) {
       this.actions?.walk?.stop();
@@ -175,24 +224,25 @@ export class Enemy {
     this.slowT = Math.max(this.slowT, dur);
   }
 
-  hurt(raw, { pierce = false } = {}) {
+  hurt(raw, opts = {}) {
     if (!this.alive) return 0;
-    let dmg = Math.max(1, raw - (pierce ? 0 : (this.def.armor || 0)));
-    // 护盾优先吸收
-    if (this.shield > 0 && dmg > 0) {
-      const absorbed = Math.min(this.shield, dmg);
-      this.shield -= absorbed;
-      dmg -= absorbed;
-      this.flash = Math.max(this.flash, 0.6);
-      if (dmg <= 0) return absorbed;
+    const result = resolveDamage({ hp: this.hp, shield: this.shield, armor: this.armor,
+      raw, ignoreArmor: opts.ignoreArmor ?? opts.pierce, armorPenetration: opts.armorPenetration,
+      minimumDamage: opts.minimumDamage ?? 1, allowZero: opts.allowZero, resistance: this.resistance,
+      damageType: opts.damageType });
+    this.shield = Math.max(0, this.shield - result.shieldDamage);
+    this.hp = Math.max(0, this.hp - result.hpDamage);
+    this.lastDamage = result;
+    if (result.totalDamage > 0) {
+      this.flash = Math.max(this.flash, result.shieldDamage > 0 && result.hpDamage <= 0 ? 0.6 : 1);
     }
-    this.hp -= dmg;
-    this.flash = 1;
-    return dmg + (this.shieldMax ? 0 : 0);
+    return result.totalDamage;
   }
 
   update(dt, ctx) {
     this.age += dt;
+    updateEffects(this, dt, ctx);
+    if (!this.alive) return;
     // 模型迟到检测：程序化替身每 2s 查一次模型缓存，可用即热替换
     if (!this.mixer && this.def.model) {
       this._modelT = (this._modelT ?? 1) - dt;
@@ -206,6 +256,10 @@ export class Enemy {
       this.slowT -= dt;
       if (this.slowT <= 0) this.slowPct = 0;
     }
+    // 自然回血（某些词缀或 boss 能力）
+    if (this.regen > 0 && this.hp < this.maxHp && this.hp > 0) {
+      this.hp = Math.min(this.maxHp, this.hp + this.regen * dt);
+    }
     // Boss：狂暴（越走越快）
     const frenzyMul = this.def.ability === 'frenzy' ? 1 + Math.min(0.85, this.age * 0.045) : 1;
     // Boss：护盾再生
@@ -217,21 +271,24 @@ export class Enemy {
       }
     }
     // 萨满群体治疗
-    if (this.def.heal) {
+    if (this.healRadius > 0) {
       this.healCd -= dt;
       if (this.healCd <= 0) {
         this.healCd = 1;
-        for (const e of ctx.enemies) {
-          if (e !== this && e.alive && e.hp < e.maxHp &&
-              e.pos.distanceToSquared(this.pos) < this.def.heal.radius ** 2) {
-            e.hp = Math.min(e.maxHp, e.hp + this.def.heal.hps);
+          const nearby = ctx.queryEnemiesRadius?.(this.pos.x, this.pos.z, this.healRadius) || ctx.enemies;
+          for (const e of nearby) {
+            if (e !== this && e.alive && e.hp < e.maxHp &&
+                !(e.healSuppressedT > 0) &&
+                e.pos.distanceToSquared(this.pos) < this.healRadius ** 2) {
+            e.hp = Math.min(e.maxHp, e.hp + this.healHps);
           }
         }
-        ctx.fx.ring(this.pos, this.def.heal.radius, 0x4ac8b8, 0.45);
+        ctx.fx.ring(this.pos, this.healRadius, 0x4ac8b8, 0.45);
       }
     }
 
     const sp = this.baseSpeed * frenzyMul * (1 - this.slowPct);
+    this.effectiveSpeed = Math.max(0, sp);
     this.dist += sp * dt;
     this.sampler.at(this.dist, this.pos);
 
@@ -257,15 +314,16 @@ export class Enemy {
     // 受击闪白/减速染蓝/护盾微光（兼容程序化单材质与 GLTF 多材质）
     if (this.flash > 0) this.flash = Math.max(0, this.flash - dt * 6);
     const shieldGlow = this.shield > 0 ? 0.22 : 0;
+    const poisonGlow = poisonStacks(this) > 0 ? 0.35 : 0;
     const rF = this.flash * 1.0 + shieldGlow * 0.4;
     const gF = this.flash * 1.0 + shieldGlow * 0.8;
     const bF = this.flash * 0.9 + (this.slowPct > 0 ? 0.25 : 0) + shieldGlow;
-    const intensity = this.flash * 1.8 + (this.slowPct > 0 ? 0.35 : 0) + shieldGlow * 1.4;
+    const intensity = this.flash * 1.8 + (this.slowPct > 0 ? 0.35 : 0) + shieldGlow * 1.4 + poisonGlow;
     for (const mm of this.flashMats) {
       if (!mm.emissive) continue;
       mm.emissive.setRGB(
         Math.min(1.2, this.flash * 0.9 + shieldGlow * 0.4),
-        Math.min(1.2, this.flash * 0.9 + shieldGlow * 0.8),
+        Math.min(1.2, this.flash * 0.9 + shieldGlow * 0.8 + poisonGlow),
         Math.min(1.2, this.flash * 0.85 + (this.slowPct > 0 ? 0.3 : 0) + shieldGlow),
       );
       mm.emissiveIntensity = intensity;
@@ -290,6 +348,7 @@ export class Enemy {
 
   dispose(scene) {
     this.disposed = true;
+    clearEffects(this);
     this.mixer?.stopAllAction();
     try { this.mixer?.uncacheRoot(this.mesh); } catch {}
     scene.remove(this.mesh);
@@ -310,10 +369,19 @@ export class Tower {
     this.id = ++_id;
     this.key = key;
     this.def = TOWER_DEFS[key];
+    if (!this.def) throw new Error('Unknown tower: ' + key);
+    this.disposed = false;
     this.cx = cx; this.cz = cz;
     this.level = 0;
-    this.invested = this.def.cost;
+    this.invested = towerCost(key);
     this.stats = statsFor(key, 0);
+    this.specialization = null;
+    this.skillCooldowns = { signature: 0, ultimate: 0 };
+    this.skillCasts = { signature: 0, ultimate: 0 };
+    this.manualUltimate = false;
+    this.timedBuffs = [];
+    this._effectiveStats = this.stats;
+    this._skillCooldownPct = 0;
     this.cooldown = 0;
     this.target = null;
     this.retarget = 0;
@@ -325,76 +393,163 @@ export class Tower {
   }
   placeAt(pos) { this.pos.copy(pos); this.mesh.position.copy(pos); }
 
-  canUpgrade() { return this.level < (this.def.lvls ? this.def.lvls.length - 1 : 4); }
-  upgradeCost() { return this.canUpgrade() ? this.def.lvls[this.level + 1].cost : 0; }
-  upgrade() {
+  maxLevel() { return this.def?.lvls?.length || 1; }
+  canUpgrade() { return !this.disposed && this.level + 1 < this.maxLevel(); }
+  requiresSpecialization() { return this.level === 4 && !this.specialization && this.specializationOptions().length > 0; }
+  specializationOptions() {
+    return ['A', 'B'].map((branch) => ({ branch, ...specializationFor(this.key, branch) }))
+      .filter((x) => x.key);
+  }
+  upgradeCost() { return this.canUpgrade() ? towerCost(this.key, this.level + 1) : 0; }
+  upgrade(branch = null) {
     if (!this.canUpgrade()) return false;
+    if (branch !== null && !this.requiresSpecialization()) return false;
+    if (this.requiresSpecialization()) {
+      if (!specializationFor(this.key, branch)) return false;
+      this.specialization = branch;
+    }
     const cost = this.upgradeCost(); // 必须在 level++ 前取：++ 后查到的是下一级的钱（曾致卖价错账）
     this.level++;
     this.invested += cost;
     this.stats = statsFor(this.key, this.level);
-    // 加等级指示
-    const pipsGroup = this.mesh.userData.pips;
-    if (pipsGroup) {
-      pipsGroup.clear();
-      const n = this.level + 1;
-      const isMax = !this.canUpgrade();
-      const pipGeo = new THREE.BoxGeometry(0.065, isMax ? 0.08 : 0.05, 0.065);
-      const pipMat = new THREE.MeshStandardMaterial({
-        color: isMax ? 0xffe044 : (this.level >= 3 ? 0x66ddff : 0xffcc55),
-        emissive: isMax ? 0xffaa00 : (this.level >= 3 ? 0x0088cc : 0xaa7700),
-        emissiveIntensity: isMax ? 1.3 : 0.6,
-        roughness: 0.3,
-        metalness: 0.4,
-      });
-      for (let i = 0; i < n; i++) {
-        const c = new THREE.Mesh(pipGeo, pipMat);
-        c.position.set((i - (n - 1) / 2) * 0.11, 0, 0.5);
-        pipsGroup.add(c);
-      }
+    this._refreshCombatStats();
+    for (const tier of ['signature', 'ultimate']) {
+      const skill = skillFor(this, tier);
+      if (skill && this.level + 1 === skill.unlockLevel) this.skillCooldowns[tier] = skill.cooldown;
     }
+    updateTowerAppearance(this.mesh, this.level, this.specialization);
     return true;
   }
   sellValue() { return Math.round(this.invested * 0.7); }
 
-  acquire(enemies) {
-    let best = null, bestD = -1;
-    for (const e of enemies) {
-      if (!e.alive) continue;
-      if (e.def.fly && this.stats.targets === 'ground') continue;
-      if (e.pos.distanceToSquared(this.pos) > this.stats.range ** 2) continue;
-      if (e.dist > bestD) { bestD = e.dist; best = e; }
+  combatStats() { return this._effectiveStats || this.stats; }
+
+  addTimedBuff(sourceId, time, duration, modifiers, tier = 'signature') {
+    if (this.disposed || this.key === 'beacon') return;
+    this.timedBuffs = this.timedBuffs.filter((b) => b.until > time && !(b.sourceId === sourceId && b.tier === tier));
+    this.timedBuffs.push({ sourceId, tier, until: time + duration, modifiers: { ...modifiers } });
+  }
+
+  clearTimedBuffs() { this.timedBuffs = []; }
+
+  _refreshCombatStats(ctx) {
+    const base = this.stats;
+    const spec = specializationModifiers(this);
+    const aura = {}, timed = {};
+    const strongest = (out, values) => {
+      for (const key of ['damagePct', 'ratePct', 'skillCooldownPct']) out[key] = Math.max(out[key] || 0, values?.[key] || 0);
+    };
+    if (ctx && this.key !== 'beacon') {
+      const beacons = ctx.supportTowers || ctx.towers.filter((t) => t.key === 'beacon');
+      for (const other of beacons) {
+        if (other.disposed || xzDistanceSq(this.pos, other.pos) > other.stats.range ** 2) continue;
+        const mods = specializationModifiers(other);
+        strongest(aura, {
+          damagePct: other.stats.aura.damagePct + (mods.auraDamagePct || 0),
+          ratePct: other.stats.aura.ratePct + (mods.auraRatePct || 0),
+          skillCooldownPct: other.stats.aura.skillCooldownPct + (mods.auraSkillCooldownPct || 0),
+        });
+      }
+      this.timedBuffs = this.timedBuffs.filter((buff) => buff.until > ctx.time && beacons.some((source) =>
+        source.id === buff.sourceId && !source.disposed && xzDistanceSq(this.pos, source.pos) <= source.stats.range ** 2));
+      for (const buff of this.timedBuffs) strongest(timed, buff.modifiers);
+    }
+    const s = { ...base };
+    s.dmg = Math.round(base.dmg * (1 + (spec.damagePct || 0) + Math.min(1, (aura.damagePct || 0) + (timed.damagePct || 0))));
+    s.rate = Math.min(4, base.rate * (1 + (spec.ratePct || 0) + Math.min(0.8, (aura.ratePct || 0) + (timed.ratePct || 0))));
+    if (base.aura) s.aura = {
+      damagePct: base.aura.damagePct + (spec.auraDamagePct || 0),
+      ratePct: base.aura.ratePct + (spec.auraRatePct || 0),
+      skillCooldownPct: base.aura.skillCooldownPct + (spec.auraSkillCooldownPct || 0),
+    };
+    this._skillCooldownPct = Math.min(0.5, (aura.skillCooldownPct || 0) + (timed.skillCooldownPct || 0));
+    this._effectiveStats = s;
+  }
+
+  toggleUltimateMode() {
+    if (this.disposed || !skillFor(this, 'ultimate') || this.level + 1 < 8) return false;
+    this.manualUltimate = !this.manualUltimate;
+    return this.manualUltimate;
+  }
+
+  canUseSkill(tier = 'signature') { return canUseSkill(this, tier); }
+  skillRemaining(tier = 'signature') { return Math.max(0, this.skillCooldowns[tier] || 0); }
+  useSkill(tier, ctx) { this._refreshCombatStats(ctx); return castSkill(this, tier, ctx); }
+
+  poisonSpec(multiplier = 1) {
+    const p = { ...(this.combatStats().poison || { damage: 4, duration: 4, maxStacks: 4, healBlock: 2 }) };
+    const mod = specializationModifiers(this);
+    p.damage = Math.max(1, p.damage * multiplier * (1 + (mod.poisonDamagePct || 0)));
+    p.healBlock = this.level >= 3 ? p.healBlock * (1 + (mod.healBlockPct || 0)) : 0;
+    p.maxStacks = Math.min(8, Math.max(1, p.maxStacks + (mod.poisonMaxStacks || 0)));
+    return p;
+  }
+
+  skillRadius(tier = 'signature') {
+    const base = tier === 'ultimate' ? 2.25 : 1.45;
+    const mod = specializationModifiers(this);
+    return base * (mod.signatureRadius || 1);
+  }
+
+  acquire(enemies, ctx = null) {
+    const s = this.combatStats();
+    const predicate = (e) => targetMatches(s.targets, e);
+    const candidates = ctx?.queryEnemiesRadius
+      ? ctx.queryEnemiesRadius(this.pos.x, this.pos.z, s.range, predicate)
+      : enemies.filter((e) => predicate(e) && xzDistanceSq(e.pos, this.pos) <= s.range ** 2);
+    let best = null, bestScore = null;
+    for (const e of candidates) {
+      const score = targetScore(e, s.targeting);
+      if (!best || compareScores(score, bestScore) < 0) { best = e; bestScore = score; }
     }
     return best;
   }
 
   fire(target, ctx) {
-    const s = this.stats;
+    const s = this.combatStats();
+    if (!targetMatches(s.targets, target) || xzDistanceSq(target.pos, this.pos) > s.range ** 2) return false;
+    const damageOpts = {
+      damageType: s.damageType,
+      armorPenetration: s.armorPenetration,
+      ignoreArmor: s.ignoreArmor,
+      minimumDamage: s.minimumDamage,
+      allowZero: s.allowZero,
+      effects: this.key === 'venom' ? { poison: this.poisonSpec() } : undefined,
+      sourceTowerId: this.id,
+      targetMask: s.targets,
+    };
     const muzzle = this.mesh.userData.muzzle
       ? this.mesh.userData.muzzle.getWorldPosition(new THREE.Vector3())
       : this.pos.clone().setY(0.6);
 
+    if (s.kind === 'support') return false;
+
     if (s.kind === 'pulse') {
       ctx.fx.ring(this.pos, s.range, 0x59c8ff, 0.35);
       ctx.fx.frostPuff?.(this.pos, s.range);
-      for (const e of ctx.enemies) {
-        if (!e.alive) continue;
-        if (e.pos.distanceToSquared(this.pos) <= s.range ** 2) {
-          e.applySlow(s.slow.pct, s.slow.dur);
-          ctx.hitEnemy(e, s.dmg);
-        }
+      const affected = ctx.queryEnemiesRadius
+        ? ctx.queryEnemiesRadius(this.pos.x, this.pos.z, s.range, (e) => targetMatches(s.targets, e))
+        : ctx.enemies.filter((e) => targetMatches(s.targets, e) && xzDistanceSq(e.pos, this.pos) <= s.range ** 2);
+      for (const e of affected) {
+        e.applySlow?.(s.slow.pct, s.slow.dur);
+        ctx.hitEnemy(e, s.dmg, damageOpts);
       }
-      return;
+      return true;
     }
 
     if (s.kind === 'chain') {
+      if (!targetMatches(s.targets, target)) return false;
       const chain = [target];
       const seen = new Set(chain.map((e) => e.id));
       let from = target;
       while (chain.length < s.chains) {
-        let next = null, nd = 2.4 ** 2;
-        for (const e of ctx.enemies) {
-          if (!e.alive || seen.has(e.id)) continue;
+        const chainRange = s.chainRange ?? 2.4;
+        let next = null, nd = chainRange ** 2;
+        const nearby = ctx.queryEnemiesRadius
+          ? ctx.queryEnemiesRadius(from.pos.x, from.pos.z, chainRange, (e) => targetMatches(s.targets, e))
+          : ctx.enemies;
+        for (const e of nearby) {
+          if (!targetMatches(s.targets, e) || seen.has(e.id)) continue;
           const dd = e.pos.distanceToSquared(from.pos);
           if (dd < nd) { nd = dd; next = e; }
         }
@@ -403,33 +558,44 @@ export class Tower {
       }
       const pts = [muzzle.clone()];
       chain.forEach((e, i) => {
-        ctx.hitEnemy(e, Math.round(s.dmg * Math.pow(0.72, i)), { pierce: true });
+        ctx.hitEnemy(e, Math.round(s.dmg * Math.pow(0.72, i)), damageOpts);
         pts.push(e.pos.clone().setY(0.5));
       });
       ctx.fx.lightning(pts);
       ctx.fx.flash(muzzle, 0x66aaff, 5, 0.09);
-      return;
+      return true;
     }
 
     if (s.kind === 'mortar') {
       const flight = Math.max(0.35, target.pos.distanceTo(muzzle) / s.projSpeed);
-      const lead = target.pos.clone();
-      // 简易预判：目标沿切线前进 flight 秒
-      lead.addScaledVector(ctx.tangentOf(target), target.baseSpeed * (1 - target.slowPct) * flight * 0.85);
-      ctx.projectiles.spawnMortar(muzzle, lead, s.dmg, s.splash, flight);
+      const leadDist = target.dist + (target.effectiveSpeed ?? target.baseSpeed ?? 0) * flight * 0.85;
+      const lead = target.sampler?.at
+        ? target.sampler.at(leadDist, new THREE.Vector3())
+        : target.pos.clone().addScaledVector(ctx.tangentOf(target), leadDist - target.dist);
+      ctx.projectiles.spawnMortar(muzzle, lead, s.dmg, s.splash, flight, s.targets, damageOpts);
       this.mesh.userData.recoil = 1;
       ctx.fx.flash(muzzle, 0xffa050, 6, 0.08);
-      return;
+      return true;
     }
 
     // 直射弹
-    ctx.projectiles.spawnHoming(muzzle, target, s.dmg, s.projSpeed, { pierce: !!s.pierce, kind: this.def.proj });
+    ctx.projectiles.spawnHoming(muzzle, target, s.dmg, s.projSpeed, {
+      ...damageOpts, pierce: !!s.pierce, kind: this.def.proj,
+    });
     if (this.mesh.userData.recoil !== undefined) this.mesh.userData.recoil = 1;
     ctx.fx.flash(muzzle, this.def.proj === 'bullet' ? 0xfff2b0 : 0xd8e8ff, 3, 0.06);
+    return true;
   }
 
   update(dt, ctx) {
+    if (this.disposed) return;
     const u = this.mesh.userData;
+    this._refreshCombatStats(ctx);
+    for (const tier of ['signature', 'ultimate']) {
+      const sigMod = specializationModifiers(this);
+      const haste = Math.min(1.7, 1 + this._skillCooldownPct - (tier === 'signature' ? (sigMod.signatureCooldownPct || 0) : 0));
+      this.skillCooldowns[tier] = Math.max(0, this.skillCooldowns[tier] - dt * haste);
+    }
     if (u.spin) u.spin.rotation.y += dt * 2.2;
     if (u.pulse) u.pulse.material.emissiveIntensity = 1.3 + Math.sin(ctx.time * 6 + this.id) * 0.5;
     if (u.recoil > 0) {
@@ -437,9 +603,18 @@ export class Tower {
       if (u.barrel) u.barrel.position.z = 0.18 - u.recoil * 0.1;
     }
 
+    const s = this.combatStats();
+    if (s.kind === 'support') {
+      this.target = null;
+      for (const tier of autoSkillTiers(this, ctx)) {
+        if (this.useSkill(tier, ctx)) break;
+      }
+      return;
+    }
+
     this.retarget -= dt;
     if (this.retarget <= 0 || !this.target?.alive) {
-      this.target = this.acquire(ctx.enemies);
+      this.target = this.acquire(ctx.enemies, ctx);
       this.retarget = 0.15;
     }
 
@@ -460,15 +635,25 @@ export class Tower {
       // 旧写法 ((want-aim+3π)%2π)-π 在 aim 累计满圈后遇 JS 负余数会把 0 误差算成 ±2π，
       // 导致塔永远"未对齐"不开火（有寻敌动作但不射击）。现复用追踪的 wrap 误差。
       const aligned = !u.yaw || Math.abs(this._aimDiff ?? 0) < 0.5;
-      if (aligned || this.stats.kind === 'pulse') {
-        this.fire(this.target, ctx);
-        this.fireCount = (this.fireCount || 0) + 1; // 诊断计数：定位"塔停射"问题
-        this.cooldown = 1 / this.stats.rate;
+      if (aligned || s.kind === 'pulse') {
+        if (this.fire(this.target, ctx)) {
+          this.fireCount = (this.fireCount || 0) + 1; // 诊断计数：定位"塔停射"问题
+          this.cooldown = 1 / s.rate;
+        } else {
+          this.target = null;
+          this.retarget = 0;
+        }
       }
+    }
+    for (const tier of autoSkillTiers(this, ctx)) {
+      if (this.useSkill(tier, ctx)) break;
     }
   }
 
   dispose(scene) {
+    this.disposed = true;
+    this.target = null;
+    this.clearTimedBuffs();
     this.mesh.userData.disposed = true; // 阻止异步模型替换
     // 释放每实例材质（共享材质在 towers.js 标记 userData.shared 跳过；
     // 几何全部来自 geoCache 共享缓存，一律不释放。与 Enemy.dispose 的材质释放对称）
@@ -500,28 +685,30 @@ export class Projectiles {
     let a;
     if (kind === 'arrow') a = projAsset('arrow', () => new THREE.BoxGeometry(0.05, 0.05, 0.42), () => new THREE.MeshStandardMaterial({ color: 0xe8dcc0 }));
     else if (kind === 'bullet') a = projAsset('bullet', () => new THREE.SphereGeometry(0.07, 6, 5), () => new THREE.MeshBasicMaterial({ color: 0xfff2b0 }));
+    else if (kind === 'venom') a = projAsset('venom', () => new THREE.SphereGeometry(0.1, 8, 6), () => new THREE.MeshStandardMaterial({ color: 0x73e66f, emissive: 0x2d8f3c, emissiveIntensity: 1.1 }));
     else a = projAsset('ball', () => new THREE.SphereGeometry(0.13, 8, 6), () => new THREE.MeshStandardMaterial({ color: 0x22262c, roughness: 0.5, metalness: 0.4 }));
     return new THREE.Mesh(a.geo, a.mat);
   }
 
-  spawnHoming(from, target, dmg, speed, opts) {
+  spawnHoming(from, target, dmg, speed, opts = {}) {
     const mesh = this._mesh(opts.kind || 'arrow');
     mesh.position.copy(from);
     this.scene.add(mesh);
     this.list.push({
-      mode: 'homing', mesh, target, dmg,
+      mode: 'homing', mesh, target, dmg, kind: opts.kind,
       speed: Number.isFinite(speed) && speed > 0 ? speed : 12, // 防御：非法速度回退，避免 NaN 弹体
-      pierce: opts.pierce, last: target.pos.clone(), alive: true,
+      pierce: opts.pierce, damageOpts: { ...opts }, last: target.pos.clone(), alive: true,
     });
   }
 
-  spawnMortar(from, impact, dmg, splash, flight) {
+  spawnMortar(from, impact, dmg, splash, flight, targetMask = 'both', damageOpts = {}) {
     const mesh = this._mesh('ball');
     mesh.position.copy(from);
     this.scene.add(mesh);
     this.list.push({
       mode: 'arc', mesh, p0: from.clone(), p1: impact.clone(),
-      h: 1.3 + from.distanceTo(impact) * 0.12, t: 0, T: flight, dmg, splash, alive: true,
+      h: 1.3 + from.distanceTo(impact) * 0.12, t: 0, T: flight, dmg, splash,
+      targetMask, damageOpts: { ...damageOpts }, alive: true,
     });
   }
 
@@ -542,12 +729,13 @@ export class Projectiles {
         p._trail = (p._trail || 0) + dt;
         if (p._trail > 0.028) {
           p._trail = 0;
-          ctx.fx.spark(pos, p.kind === 'bullet' ? 0xfff2b0 : 0xd8e8ff);
+          ctx.fx.spark(pos, p.kind === 'venom' ? 0x75e66f : p.kind === 'bullet' ? 0xfff2b0 : 0xd8e8ff);
         }
         if (dist < 0.28 || (p.target?.alive && p.target.pos.distanceTo(pos) < 0.32)) {
           p.alive = false;
-          if (p.target?.alive) ctx.hitEnemy(p.target, p.dmg, { pierce: p.pierce });
-          ctx.fx.burst(p.last, 0xfff0c0, 8);
+          if (p.damageOpts.splash > 0) ctx.explode(p.last, p.dmg, p.damageOpts.splash, p.damageOpts.targetMask, p.damageOpts);
+          else if (p.target?.alive) ctx.hitEnemy(p.target, p.dmg, p.damageOpts);
+          ctx.fx.burst(p.last, p.kind === 'venom' ? 0x75e66f : 0xfff0c0, 8);
           continue;
         }
         dir.normalize().multiplyScalar(Math.min(dist, p.speed * dt));
@@ -563,7 +751,7 @@ export class Projectiles {
         }
         if (p.t >= 1) {
           p.alive = false;
-          ctx.explode(p.p1, p.dmg, p.splash);
+          ctx.explode(p.p1, p.dmg, p.splash, p.targetMask, p.damageOpts);
           ctx.fx.burst(p.p1, 0xffa050, 16);
           continue;
         }

@@ -5,6 +5,7 @@
   "type": "module",
   "description": "三境守卫 —— Three.js 3D 塔防（3 世界 × 10 关）",
   "scripts": {
+    "test": "node --test tools/maps.test.mjs tools/combat.test.mjs tools/growth.test.mjs",
     "start": "node tools/serve.mjs",
     "assets": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/download-assets.ps1"
   }

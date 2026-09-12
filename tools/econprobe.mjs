@@ -8,6 +8,7 @@ import { FxLayer, makePathSampler } from '../js/game/entities.js';
 import { buildLevel, BALANCE } from '../js/game/levelgen.js';
 import { TOWER_DEFS } from '../js/game/towers.js';
 import { GRID } from '../js/game/config.js';
+import { createMapLayout } from '../js/game/map-layout.js';
 
 const ARG_ALIAS = {
   hp: 'hpBase', lateK: 'hpLateK', late: 'hpLateK', latePow: 'hpLatePow', lateFrom: 'hpLateFrom',
@@ -32,23 +33,7 @@ const SMART = process.argv.includes('--smart');
 const ROWS = process.argv.includes('--rows');
 const DT = 1 / 30, SPEED = 3, MAX_SEC = 900;
 
-function pathData(map) {
-  const cw = (cx) => cx - GRID.w / 2 + 0.5;
-  const pts = map.waypoints.map(([cx, cz]) => ({ x: cw(cx), z: (cz - GRID.h / 2 + 0.5) }));
-  const pathCells = new Set();
-  for (let i = 0; i < pts.length - 1; i++) {
-    const a = pts[i], b = pts[i + 1];
-    const steps = Math.ceil(Math.hypot(b.x - a.x, b.z - a.z) / 0.22);
-    for (let s = 0; s <= steps; s++) {
-      const x = a.x + (b.x - a.x) * (s / steps);
-      const z = a.z + (b.z - a.z) * (s / steps);
-      pathCells.add(`${Math.floor(x + GRID.w / 2)},${Math.floor(z + GRID.h / 2)}`);
-    }
-  }
-  return { pts, pathCells };
-}
 
-const COSTS = { arrow: 70, cannon: 110, frost: 90, tesla: 130, sniper: 150 };
 // 更贴近人类的阵容循环：主力箭塔+狙击，辅以炮/冰/电
 const PLAN = ['arrow', 'frost', 'arrow', 'cannon', 'tesla', 'sniper', 'arrow', 'sniper', 'tesla', 'arrow', 'cannon', 'frost'];
 // 塔位上限：人类有钱就会继续铺塔（地图 330 格去掉路径仍很宽裕），
@@ -87,16 +72,17 @@ function simulate(w, l) {
   const level = buildLevel(w, l);
   const scene = new THREE.Scene();
   const fx = new FxLayer(scene);
-  const { pts, pathCells } = pathData(level.map);
+  const layout = createMapLayout(level.map);
+  const samplers = layout.routes.map(makePathSampler);
 
   let income = 0;      // 所有进账（初始金不计）
   const hooks = {
     camera: new THREE.PerspectiveCamera(),
     onGold: () => {},
   };
-  const battle = new Battle({ scene, level, sampler: makePathSampler(pts), pathCells, fx, hooks });
+  const battle = new Battle({ scene, level, ...layout, sampler: samplers[0], samplers, fx, hooks });
   battle.speed = SPEED;
-  const samples = SMART ? makeSamples(battle.sampler) : null;
+  const samples = SMART ? samplers.flatMap((sampler) => makeSamples(sampler)) : null;
 
   let prevGold = battle.gold;
   let peakGold = battle.gold;
@@ -108,10 +94,10 @@ function simulate(w, l) {
     // —— 机器人：升级优先于铺新塔（人类同样偏好，且钱多时两者都做）——
     const upCand = battle.towers.filter((x) => x.canUpgrade()).sort((a, b) => a.upgradeCost() - b.upgradeCost())[0];
     if (upCand && battle.gold >= upCand.upgradeCost()) {
-      battle.upgradeTower(upCand);
+      battle.upgradeTower(upCand, upCand.requiresSpecialization() ? 'A' : null);
     } else if (battle.towers.length < MAX_TOWERS) {
       const key = PLAN[battle.towers.length % PLAN.length];
-      if (battle.gold >= COSTS[key]) {
+      if (battle.gold >= battle.costOf(key)) {
         if (SMART) {
           const c = smartCell(battle, key, samples);
           if (c) { battle.selectedType = key; battle.tryPlace(c[0], c[1]); }

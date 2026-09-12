@@ -9,7 +9,7 @@ import { createSky, createClouds } from './engine/sky.js';
 import { CameraRig } from './engine/camera.js';
 import { buildTerrain, isPathCell } from './engine/terrain.js';
 import { scatterDecor, initDecorModels } from './engine/decor.js';
-import { GRID, QUALITY_PRESETS, themeForWorld } from './game/config.js';
+import { GRID, MAP_LINEAR_SCALE, QUALITY_PRESETS, themeForWorld } from './game/config.js';
 import { mapForLevel } from './game/maps.js';
 import { buildLevel, starsFor } from './game/levelgen.js';
 import { Battle } from './game/battle.js';
@@ -19,6 +19,7 @@ import { ENEMY_MODEL_NAMES } from './game/units.js';
 import { preloadEnemyModels, hasEnemyModel } from './engine/modellib.js';
 import { Floaters } from './ui/floaters.js';
 import { createHud } from './ui/hud-lite.js';
+import { createMinimap } from './ui/minimap.js';
 import { createMenu, createSelect, createSettingsPanel, createPause } from './ui/screens.js';
 import { createResult } from './ui/result.js';
 import { TouchGestures } from './engine/touch.js';
@@ -62,8 +63,8 @@ async function init() {
 
   let curTheme = themeForWorld(worldIdx);
   scene.fog.color.setHex(curTheme.fog);
-  scene.fog.near = curTheme.fogNear;
-  scene.fog.far = curTheme.fogFar;
+  scene.fog.near = curTheme.fogNear * MAP_LINEAR_SCALE;
+  scene.fog.far = curTheme.fogFar * MAP_LINEAR_SCALE;
 
   let sky = createSky(curTheme);
   scene.add(sky);
@@ -75,9 +76,22 @@ async function init() {
     minX: -GRID.w / 2 - 2, maxX: GRID.w / 2 + 2,
     minZ: -GRID.h / 2 - 1, maxZ: GRID.h / 2 + 1,
   });
-  rig.cur.focus.set(-1.5, 0, 0.8);
-  rig.dist = 17;
-  if (innerHeight > innerWidth) rig.dist = 24; // 竖屏（手机）：地图横向长，初始拉远看得更多
+  function updateMapFit() {
+    const tanFov = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
+    const horizontalFit = GRID.w / (2 * tanFov * camera.aspect * 0.88);
+    const verticalFit = GRID.h * Math.sin(rig.pitch) / (2 * tanFov * 0.78);
+    rig.overviewDistance = Math.max(horizontalFit, verticalFit) + GRID.h / 2 * Math.cos(rig.pitch) + 1;
+    rig.maxDistance = Math.max(60, rig.overviewDistance * 1.2);
+  }
+  function frameMap() {
+    updateMapFit();
+    rig.dist = rig.overviewDistance;
+    rig.cur.dist = rig.dist;
+    rig.yaw = 0; rig.cur.yaw = 0;
+    rig.cur.focus.set(0, 0, 0.5);
+    rig.update(0);
+  }
+  frameMap();
 
   const postfx = new PostFX(renderer, preset0);
   const fx = new FxLayer(scene);
@@ -123,13 +137,13 @@ async function init() {
         });
         scene.remove(g);
       }
-      scene.remove(sky);
-      sky.traverse((o) => { o.geometry?.dispose?.(); o.material?.dispose?.(); });
     }
+    scene.remove(sky);
+    sky.traverse((o) => { o.geometry?.dispose?.(); o.material?.dispose?.(); });
     curTheme = theme;
     scene.fog.color.setHex(theme.fog);
-    scene.fog.near = theme.fogNear;
-    scene.fog.far = theme.fogFar;
+    scene.fog.near = theme.fogNear * MAP_LINEAR_SCALE;
+    scene.fog.far = theme.fogFar * MAP_LINEAR_SCALE;
     sky = createSky(theme);
     scene.add(sky);
     sun.color.setHex(theme.sunColor);
@@ -141,7 +155,7 @@ async function init() {
     const terrain = await buildTerrain({ theme, map });
     scene.add(terrain.group);
     await modelsReady; // 模型就绪后再散布装饰（未加载完的项自动回退程序化）
-    const decor = scatterDecor({ theme, pathCells: terrain.pathCells, seed: 777, pathPts: terrain.pts });
+    const decor = scatterDecor({ theme, pathCells: terrain.pathCells, seed: map.seed, pathPts: terrain.pts, layout: terrain });
     scene.add(decor.group);
     const clouds = createClouds(theme);
     scene.add(clouds.group);
@@ -152,7 +166,7 @@ async function init() {
 
   // ———— UI 覆盖层 ————
   let mode = 'menu';       // menu | select | battle
-  let battle = null, hud = null, paused = false, slowmo = 0;
+  let battle = null, hud = null, minimap = null, paused = false, slowmo = 0;
 
   const applyQuality = (name) => {
     const p = QUALITY_PRESETS[name] || QUALITY_PRESETS.high;
@@ -217,7 +231,7 @@ async function init() {
   scene.add(preview);
   function setPreview(pos, range, color) {
     preview.visible = true;
-    preview.position.set(pos.x, 0.06, pos.z);
+    preview.position.set(pos.x, (pos.y ?? 0) + 0.07, pos.z);
     preview.scale.set(range, range, range);
     ringMat.color.setHex(color);
     discMat.color.setHex(color);
@@ -297,14 +311,15 @@ async function init() {
 
     // 相机归位：清掉菜单环绕残留的偏航角，避免视角歪斜
     rig.yaw = 0; rig.cur.yaw = 0;
-    rig.dist = innerHeight > innerWidth ? 24 : 17; // 竖屏拉远，地图横向长
-    rig.cur.dist = Math.min(rig.cur.dist, Math.max(rig.dist, 24));
-    rig.cur.focus.set(-1.5, 0, 0.8);
+    frameMap();
 
+    const samplers = worldBuild.routes.map(makePathSampler);
     battle = new Battle({
       scene, level,
-      sampler: makePathSampler(worldBuild.pts),
+      sampler: samplers[0], samplers,
       pathCells: worldBuild.pathCells,
+      blockedCells: worldBuild.blockedCells,
+      heightAt: worldBuild.heightAt,
       fx,
       hooks: {
         camera,
@@ -329,7 +344,8 @@ async function init() {
           slowmo = Math.max(slowmo, 0.05);
         },
         onLeak: () => { damageFlash(); audio.leak(); rig.shake(0.07); },
-        onBuild: (t) => { audio.build(); fx.burst(t.pos.clone().setY(0.3), 0xbfae90, 14, { speed: 2 }); preview.visible = false; },
+        onSkill: (tower, tier) => audio.skill(tower.key, tier),
+        onBuild: (t) => { worldBuild.decor.clearCell(t.cx, t.cz); audio.build(); fx.burst(t.pos.clone().add(new THREE.Vector3(0, 0.3, 0)), 0xbfae90, 14, { speed: 2 }); preview.visible = false; },
       },
     });
     lastBattleInfo = { w, l };
@@ -340,6 +356,8 @@ async function init() {
       onQuit: () => { exitBattle(); showSelect(); },
       onPause: () => togglePause(true),
     });
+    minimap = createMinimap({ battle, rig, camera, onOverview: frameMap });
+    hud.root.appendChild(minimap.root);
     chainAfterHud(w, l); // 在 HUD 钩子之后链式挂结算
 
     mode = 'battle';
@@ -376,6 +394,8 @@ async function init() {
   }
 
   function exitBattle() {
+    minimap?.destroy();
+    minimap = null;
     battle?.destroy();
     battle = null;
     hud?.root.remove();
@@ -383,6 +403,7 @@ async function init() {
     preview.visible = false;
     endTutorial();
     slowmo = 0; paused = false;
+    pauseMenu.hide();
   }
 
   // ———— 模式切换 ————
@@ -407,6 +428,8 @@ async function init() {
   function togglePause(on) {
     if (mode !== 'battle' && on) return;
     paused = on ?? !paused;
+    battle?.setPaused(paused);
+    rig.keys.clear();
     paused ? pauseMenu.show() : pauseMenu.hide();
   }
 
@@ -421,20 +444,22 @@ async function init() {
   window.addEventListener('keydown', () => audio.resume());
 
   // ———— 输入 ————
-  const groundPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
-  const hitPoint = new THREE.Vector3();
+  function groundHit(clientX, clientY) {
+    return rig.screenRay(clientX, clientY).intersectObject(worldBuild.ground, false)[0]?.point;
+  }
   // 建造/选塔（鼠标点击与触摸轻点共用；触摸由 TouchGestures 判定轻点后回调）
   function placeOrSelect(clientX, clientY) {
     if (mode !== 'battle' || paused) return;
     if (!battle || battle.state === 'won' || battle.state === 'lost') return;
-    const ray = rig.screenRay(clientX, clientY);
-    if (!ray.ray.intersectPlane(groundPlane, hitPoint)) return;
+    const hitPoint = groundHit(clientX, clientY);
+    if (!hitPoint) return;
     const cx = Math.floor(hitPoint.x + GRID.w / 2);
     const cz = Math.floor(hitPoint.z + GRID.h / 2);
     if (battle.selectedType) {
       const r = battle.tryPlace(cx, cz);
       if (r === 'blocked') hud.hint('❌ 这里不能建造');
       else if (r === 'poor') hud.hint('💰 金币不足');
+      else if (r === 'locked') hud.hint('该塔尚未解锁');
       else if (r === true) { hud.banner('建造完成'); hud.hint(''); }
     } else {
       battle.selectTower(battle.towerAt(cx, cz));
@@ -451,13 +476,13 @@ async function init() {
   });
   renderer.domElement.addEventListener('pointermove', (ev) => {
     if (mode !== 'battle' || !battle?.selectedType) return;
-    const ray = rig.screenRay(ev.clientX, ev.clientY);
-    if (!ray.ray.intersectPlane(groundPlane, hitPoint)) return;
+    const hitPoint = groundHit(ev.clientX, ev.clientY);
+    if (!hitPoint) return;
     const cx = Math.floor(hitPoint.x + GRID.w / 2);
     const cz = Math.floor(hitPoint.z + GRID.h / 2);
     const range = TOWER_DEFS[battle.selectedType]?.range ?? 3;
     const ok = battle.isBuildable(cx, cz) && battle.gold >= battle.costOf(battle.selectedType);
-    setPreview({ x: cx - GRID.w / 2 + 0.5, z: cz - GRID.h / 2 + 0.5 }, range, ok ? 0x59d97a : 0xff5d5d);
+    setPreview(battle.cellCenter(cx, cz), range, ok ? 0x59d97a : 0xff5d5d);
   });
   renderer.domElement.addEventListener('contextmenu', (e) => e.preventDefault());
 
@@ -466,17 +491,34 @@ async function init() {
     onTap: (x, y) => placeOrSelect(x, y),
   }); // 调试锚点见文件末尾 __TD_DEBUG
   window.addEventListener('keydown', (e) => {
+    if (e.repeat) return;
     if (e.code === 'Escape') {
       if (settingsPanel.root.classList.contains('hidden') &&
           resultModal.root.classList.contains('hidden')) {
         if (mode === 'battle') togglePause();
       }
+      return;
     }
-    if (mode === 'battle' && battle && !paused && /^Digit[1-5]$/.test(e.code)) {
-      const keys = ['arrow', 'cannon', 'frost', 'tesla', 'sniper'];
-      const key = keys[Number(e.code.slice(5)) - 1];
+    if (e.target?.closest?.('input, textarea, select, button, [contenteditable="true"]')) return;
+    if (mode === 'battle' && battle && !paused && /^Digit[1-7]$/.test(e.code)) {
+      const key = Object.values(TOWER_DEFS).find((def) => def.hotkey === e.code.slice(5))?.key;
+      if (!key) return;
       battle.selectBuild(battle.selectedType === key ? null : key);
       audio.click();
+    }
+    if (mode === 'battle' && battle && !paused && battle.selectedTower &&
+        settingsPanel.root.classList.contains('hidden') && resultModal.root.classList.contains('hidden')) {
+      if (e.code === 'KeyZ') {
+        e.preventDefault();
+        battle.useSelectedSkill('signature');
+      } else if (e.code === 'KeyX') {
+        e.preventDefault();
+        battle.useSelectedSkill('ultimate');
+      } else if (e.code === 'KeyF') {
+        e.preventDefault();
+        battle.toggleSelectedUltimateMode();
+        hud?.onSelectChanged?.();
+      }
     }
     // 空格/回车：开波（休整期=提前开战拿奖励金；建造期=正常开战）
     if (mode === 'battle' && battle && !paused && (e.code === 'Space' || e.code === 'Enter')
@@ -496,12 +538,11 @@ async function init() {
 
   // ———— 自动化测试模式（与 tools/sim.mjs 同策略：严格建造优先，造不起才升级）————
   const AUTO_PLAN = ['arrow', 'frost', 'arrow', 'cannon', 'arrow', 'tesla', 'sniper', 'arrow'];
-  const AUTO_COSTS = { arrow: 70, cannon: 110, frost: 90, tesla: 130, sniper: 150 };
   function autoStep() {
-    if (!AUTO || !battle || battle.state === 'won' || battle.state === 'lost') return;
+    if (!AUTO || !battle || !battle.canCommand()) return;
     if (battle.towers.length < AUTO_PLAN.length) {
       const key = AUTO_PLAN[battle.towers.length];
-      if (battle.gold >= AUTO_COSTS[key]) {
+      if (battle.gold >= battle.costOf(key)) {
         const mid = battle.sampler.at(battle.sampler.total * (0.22 + 0.07 * battle.towers.length));
         outer:
         for (let r = 1; r <= 4; r++) {
@@ -521,7 +562,7 @@ async function init() {
         .filter((t) => t.canUpgrade())
         .sort((a, b) => a.upgradeCost() - b.upgradeCost())[0];
       if (upCand && (battle.gold >= upCand.upgradeCost() + 20 || battle.gold > 260)) {
-        battle.upgradeTower(upCand);
+        battle.upgradeTower(upCand, upCand.requiresSpecialization() ? 'A' : null);
       }
     }
     if ((battle.state === 'build' || (battle.state === 'intermission' && battle.intermission < 1.5))) {
@@ -531,9 +572,18 @@ async function init() {
   }
 
   // ———— 主循环 ————
+  let portrait = innerHeight > innerWidth;
   window.addEventListener('resize', () => {
+    const atOverview = Math.abs(rig.dist - rig.overviewDistance) < 0.1
+      && Math.abs(rig.cur.focus.x) < 0.1 && Math.abs(rig.cur.focus.z - 0.5) < 0.1
+      && Math.abs(rig.cur.yaw) < 0.01;
+    const orientationChanged = portrait !== (innerHeight > innerWidth);
+    portrait = innerHeight > innerWidth;
     camera.aspect = innerWidth / innerHeight;
     camera.updateProjectionMatrix();
+    updateMapFit();
+    if (orientationChanged || atOverview) frameMap();
+    else rig.dist = Math.min(rig.dist, rig.maxDistance);
     renderer.setSize(innerWidth, innerHeight);
     postfx.resize();
   });
@@ -548,16 +598,17 @@ async function init() {
   const clock = new THREE.Clock();
   let firstFrameSent = false;
   renderer.setAnimationLoop(() => {
-    const dt = Math.min(clock.getDelta(), 0.05);
+    const dt = Math.min(clock.getDelta(), 0.25);
     if (AUTO && mode === 'battle') autoStep();
 
     if (mode === 'battle' && battle && !paused) {
       slowmo = Math.max(0, slowmo - dt);
       battle.update(dt * (slowmo > 0 ? 0.16 : 1));
+      hud?.update(dt);
       tickTutorial();
       // 选中塔的白色射程圈
       if (battle.selectedTower) {
-        setPreview(battle.selectedTower.pos, battle.selectedTower.stats.range, 0xffffff);
+        setPreview(battle.selectedTower.pos, battle.selectedTower.combatStats().range, 0xffffff);
         discMat.opacity = 0.06;
       } else if (!battle.selectedType) {
         preview.visible = false;
@@ -568,8 +619,10 @@ async function init() {
     }
 
     rig.update(dt);
+    worldBuild.update(clock.elapsedTime);
     worldBuild.decor.update(clock.elapsedTime);
     worldBuild.clouds?.update(dt);
+    minimap?.update(dt);
     postfx.render(scene, camera);
     if (!firstFrameSent) { firstFrameSent = true; window.__TD_READY = true; }
 
@@ -584,6 +637,7 @@ async function init() {
 
   // ———— 启动模式 ————
   window.__TD_DEBUG = { renderer, scene, camera, postfx, rig, fx, floaters, audio, battle: () => battle,
+    terrain: () => worldBuild,
     touch: touchGestures,
     ui: { menu, selectScreen, pauseMenu, settingsPanel, resultModal } };
   Object.defineProperty(window, '__TD_SNAP', { value: () => battle ? battle.snapshot() : { mode } });

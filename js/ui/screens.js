@@ -1,4 +1,6 @@
 // 界面覆盖层：主菜单 / 世界选关 / 设置面板（DOM，覆盖在渲染画布上）
+import { mapForLevel } from '../game/maps.js';
+import { mapPreview } from './map-preview.js';
 export function createMenu({ onPlay, onSelect, onSettings }) {
   const root = document.createElement('div');
   root.id = 'screen-menu';
@@ -77,10 +79,15 @@ export function createSelect({ save, onStart, onBack, onSettings }) {
     for (let l = 0; l < 10; l++) {
       const unlocked = save.isUnlocked(curWorld, l);
       const stars = save.getStars(curWorld, l);
+      const map = mapForLevel(curWorld, l);
       const card = document.createElement('button');
+      card.setAttribute('aria-label', `${curWorld + 1}-${l + 1} ${map.name}`);
+      card.setAttribute('aria-disabled', String(!unlocked));
       card.className = 'lvl-card' + (unlocked ? '' : ' lock') + (stars ? ' cleared' : '');
       card.innerHTML = `
+        <img class="map-thumb" src="${mapPreview(map)}" alt="${map.name}路线" width="220" height="150">
         <b>${l + 1}</b>
+        <span class="map-name">${map.name}</span>
         <span class="st">${'★'.repeat(stars)}${'☆'.repeat(3 - stars)}</span>
         ${l === 9 ? '<i>👑</i>' : ''}`;
       if (unlocked) card.onclick = () => onStart(curWorld, l);

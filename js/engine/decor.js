@@ -1,6 +1,6 @@
 // 程序化装饰 + Kenney CC0 模型集成：聚类微生态、遗迹营地与模型回退几何
 import * as THREE from 'three';
-import { GRID } from '../game/config.js';
+import { GRID, MAP_LINEAR_SCALE } from '../game/config.js';
 import { isPathCell } from './terrain.js';
 import { preloadModels, hasModel, makeInstance, makeInstanceWithMaterials } from './modellib.js';
 
@@ -38,7 +38,7 @@ const E = new THREE.Euler();
 const V = new THREE.Vector3();
 const S = new THREE.Vector3();
 
-export function scatterDecor({ theme, pathCells, seed = 12345, pathPts = null }) {
+export function scatterDecor({ theme, pathCells, seed = 12345, pathPts = null, layout = null }) {
   const rng = mulberry32(seed);
   const group = new THREE.Group();
   const animated = []; // {mat, base, speed, phase}
@@ -50,11 +50,14 @@ export function scatterDecor({ theme, pathCells, seed = 12345, pathPts = null })
   };
   const put = (name, x, y, z, ry, sx, sy, sz) => add(name, null, null, { x, y, z, ry, sx, sy, sz });
 
-  const halfW = GRID.w / 2 - 0.4, halfH = GRID.h / 2 - 0.4;
+  const halfW = GRID.w / 2 + 0.35, halfH = GRID.h / 2 + 0.3;
+  const lowKinds = new Set(['flower', 'tuft', 'mushroom']);
+  const groundY = (x, z) => layout?.heightAt(x, z) ?? 0;
+  const keyAt = (x, z) => `${Math.floor(x + GRID.w / 2)},${Math.floor(z + GRID.h / 2)}`;
   const placed = [];
   const CLEARANCE = 1.12;
 
-  const dToPath = pathPts && pathPts.length > 1 ? (() => {
+  const dToPath = layout?.distToPath ?? (pathPts && pathPts.length > 1 ? (() => {
     const segs = [];
     for (let i = 0; i < pathPts.length - 1; i++) {
       const a = pathPts[i], b = pathPts[i + 1];
@@ -71,14 +74,20 @@ export function scatterDecor({ theme, pathCells, seed = 12345, pathPts = null })
       }
       return best;
     };
-  })() : null;
+  })() : null);
 
-  const findSpot = () => {
-    for (let tries = 0; tries < 40; tries++) {
+  const findSpot = (kind) => {
+    for (let tries = 0; tries < 100; tries++) {
       const x = (rng() * 2 - 1) * halfW;
       const z = (rng() * 2 - 1) * halfH;
       if (isPathCell(pathCells, x, z)) continue;
       if (dToPath && dToPath(x, z) < CLEARANCE) continue;
+      if (layout) {
+        if (layout.waterDistance(x, z) < 0.95) continue;
+        const inside = Math.abs(x) < GRID.w / 2 && Math.abs(z) < GRID.h / 2;
+        if (!lowKinds.has(kind) && inside && !layout.blockedCells.has(keyAt(x, z))) continue;
+        if (layout.landmarks.some((p) => Math.hypot(x - p.x, z - p.z) < p.radius * 0.85)) continue;
+      }
       let ok = true;
       for (const p of placed) {
         if ((p.x - x) ** 2 + (p.z - z) ** 2 < 1.35) { ok = false; break; }
@@ -118,13 +127,15 @@ export function scatterDecor({ theme, pathCells, seed = 12345, pathPts = null })
     const nx = cx + Math.cos(angle) * r;
     const nz = cz + Math.sin(angle) * r;
     if (dToPath && dToPath(nx, nz) < CLEARANCE) return null;
+    if (Math.abs(nx) > halfW || Math.abs(nz) > halfH) return null;
+    if (layout && (layout.waterDistance(nx, nz) < 0.95 || !layout.blockedCells.has(keyAt(nx, nz)))) return null;
     return { x: nx, z: nz };
   };
 
   for (const kind of kinds) {
-    const n = counts[kind] || 6;
+    const n = Math.round((counts[kind] || 6) * Math.min(1.7, MAP_LINEAR_SCALE));
     for (let i = 0; i < n; i++) {
-      const spot = findSpot();
+      const spot = findSpot(kind);
       if (!spot) break;
       const { x, z } = spot;
       switch (kind) {
@@ -314,7 +325,7 @@ export function scatterDecor({ theme, pathCells, seed = 12345, pathPts = null })
     def.list.forEach((t, i) => {
       E.set(0, t.ry, 0);
       Q.setFromEuler(E);
-      V.set(t.x, t.y, t.z);
+      V.set(t.x, t.y + groundY(t.x, t.z), t.z);
       S.set(t.sx, t.sy, t.sz);
       if (name === 'branch') {
         Q.multiply(branchTilt);
@@ -340,7 +351,7 @@ export function scatterDecor({ theme, pathCells, seed = 12345, pathPts = null })
       ? makeInstanceWithMaterials(q.name, q.h, q.mul)
       : makeInstance(q.name, q.h, q.mul);
     if (!inst) continue;
-    inst.position.set(q.x, 0, q.z);
+    inst.position.set(q.x, groundY(q.x, q.z), q.z);
     inst.rotation.y = q.ry;
     group.add(inst);
     if (q.icyTint) {
@@ -363,8 +374,17 @@ export function scatterDecor({ theme, pathCells, seed = 12345, pathPts = null })
     }
   }
 
+  if (layout) addLandmarks(group, theme, layout, rng);
+
   return {
     group,
+    clearCell(cx, cz) {
+      // Small ground cover yields to a new tower instead of poking through its base.
+      for (const child of [...group.children]) {
+        if (!child.isGroup || child.userData.landmark) continue;
+        if (keyAt(child.position.x, child.position.z) === `${cx},${cz}`) group.remove(child);
+      }
+    },
     update(time) {
       for (const a of animated) {
         a.mat.emissiveIntensity = a.base + Math.sin(time * a.speed + a.phase) * a.base * 0.22;
@@ -373,3 +393,55 @@ export function scatterDecor({ theme, pathCells, seed = 12345, pathPts = null })
   };
 }
 
+function addLandmarks(group, theme, layout, rng) {
+  const sets = {
+    meadow: { hero: 'ruin_ring', small: 'ruin_column', tree: 'tree_oak', stone: 0x869080 },
+    lava: { hero: 'ruin_obelisk', small: 'stone_big', tree: 'pine_crooked', stone: 0x5f5555 },
+    frost: { hero: 'castle_wall', small: 'crystal_large', tree: 'snow_tree', stone: 0xb9d2da },
+    sand: { hero: 'ruin_obelisk', small: 'ruin_column', tree: 'cactus_tall', stone: 0xb8a286 },
+    graveyard: { hero: 'crypt_stone', small: 'grave_cross', tree: 'pine_crooked', stone: 0x77877d },
+  };
+  const set = sets[theme.id];
+  const put = (name, x, z, h, rotation) => {
+    const model = makeInstance(name, h);
+    if (!model) return;
+    model.position.set(x, layout.heightAt(x, z), z);
+    model.rotation.y = rotation ?? rng() * 6.28;
+    model.userData.landmark = true;
+    group.add(model);
+  };
+  for (const [index, p] of layout.landmarks.entries()) {
+    const r = p.radius * 0.7;
+    if (p.kind === 'ruin') {
+      const platform = new THREE.Mesh(new THREE.CylinderGeometry(r * 0.72, r, 0.22, 8),
+        new THREE.MeshStandardMaterial({ color: set.stone, roughness: 0.94, flatShading: true }));
+      platform.position.set(p.x, layout.heightAt(p.x, p.z) - 0.13, p.z);
+      platform.receiveShadow = true;
+      group.add(platform);
+      put(set.hero, p.x, p.z, theme.id === 'sand' ? 2.2 : 1.7, 0);
+      for (let j = 0; j < 4; j++) {
+        const angle = j * Math.PI / 2 + 0.4;
+        put(set.small, p.x + Math.cos(angle) * r, p.z + Math.sin(angle) * r,
+          0.55 + rng() * 0.35, angle);
+      }
+      put(theme.id === 'graveyard' ? 'lantern_post' : 'stone_small', p.x - r * 0.55, p.z + r * 0.55, 0.4);
+    } else {
+      for (let j = 0; j < Math.round(p.radius * 3); j++) {
+        const angle = j * 2.4 + index, radius = j === 0 ? 0 : r * 0.7;
+        put(set.tree, p.x + Math.cos(angle) * radius, p.z + Math.sin(angle) * radius,
+          1.45 + rng() * 0.9);
+      }
+      put(set.small, p.x + r * 0.8, p.z + r * 0.3, 0.6);
+    }
+  }
+  // Dense edge groves frame the playfield without occupying buildable shoulders.
+  for (let i = 0; i < Math.round(40 * MAP_LINEAR_SCALE); i++) {
+    const x = (rng() * 2 - 1) * (layout.halfW - 0.5);
+    const z = i % 2 ? -layout.halfH - 0.3 + rng() * 0.6 : layout.halfH - 0.2 + rng() * 0.45;
+    if (layout.distToPath(x, z) < 1.8 || layout.waterDistance(x, z) < 1.1) continue;
+    const key = `${Math.floor(x + GRID.w / 2)},${Math.floor(z + GRID.h / 2)}`;
+    // Only plant outside the logical board; internal groves already have reserved cells.
+    if (Math.abs(z) < GRID.h / 2 && !layout.blockedCells.has(key)) continue;
+    put(set.tree, x, z, z > 0 ? 0.9 + rng() * 0.4 : 1.8 + rng() * 1.3);
+  }
+}

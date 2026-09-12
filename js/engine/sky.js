@@ -1,5 +1,6 @@
 // 渐变天空穹顶 + 太阳光晕（HDR 输出喂给泛光），按主题着色
 import * as THREE from 'three';
+import { GRID } from '../game/config.js';
 
 export function createSky(theme) {
   const geo = new THREE.SphereGeometry(320, 32, 20);
@@ -64,7 +65,8 @@ export function createClouds(theme) {
       }),
     );
     m.rotation.x = -Math.PI / 2;
-    m.position.set((Math.random() - 0.5) * 90, 20 + Math.random() * 16, (Math.random() - 0.5) * 70 - 6);
+    m.position.set((Math.random() - 0.5) * (GRID.w + 68), Math.max(20, GRID.w) + Math.random() * 16,
+      -GRID.h / 2 - 22 - Math.random() * 32);
     m.renderOrder = -5;
     group.add(m);
     items.push({ m, speed: 0.25 + Math.random() * 0.5 });
@@ -74,7 +76,7 @@ export function createClouds(theme) {
     update(dt) {
       for (const it of items) {
         it.m.position.x += it.speed * dt;
-        if (it.m.position.x > 55) it.m.position.x = -55;
+        if (it.m.position.x > GRID.w / 2 + 34) it.m.position.x = -GRID.w / 2 - 34;
       }
     },
   };

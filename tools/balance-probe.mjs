@@ -11,6 +11,7 @@ import { FxLayer, makePathSampler } from '../js/game/entities.js';
 import { buildLevel, BALANCE } from '../js/game/levelgen.js';
 import { TOWER_DEFS } from '../js/game/towers.js';
 import { GRID } from '../js/game/config.js';
+import { createMapLayout } from '../js/game/map-layout.js';
 
 // —— CLI 参数覆盖（短名 → BALANCE 键 / buildLevel 覆盖映射）——
 const ARG_ALIAS = {
@@ -45,23 +46,7 @@ const DT = 1 / 30;
 const SPEED = 3;
 const MAX_GAME_SECONDS = 600;
 
-function pathData(map) {
-  const cw = (cx) => cx - GRID.w / 2 + 0.5;
-  const pts = map.waypoints.map(([cx, cz]) => ({ x: cw(cx), z: (cz - GRID.h / 2 + 0.5) }));
-  const pathCells = new Set();
-  for (let i = 0; i < pts.length - 1; i++) {
-    const a = pts[i], b = pts[i + 1];
-    const steps = Math.ceil(Math.hypot(b.x - a.x, b.z - a.z) / 0.22);
-    for (let s = 0; s <= steps; s++) {
-      const x = a.x + (b.x - a.x) * (s / steps);
-      const z = a.z + (b.z - a.z) * (s / steps);
-      pathCells.add(`${Math.floor(x + GRID.w / 2)},${Math.floor(z + GRID.h / 2)}`);
-    }
-  }
-  return { pts, pathCells };
-}
 
-const COSTS = { arrow: 70, cannon: 110, frost: 90, tesla: 130, sniper: 150 };
 const PLAN = ['arrow', 'frost', 'arrow', 'cannon', 'arrow', 'tesla', 'sniper', 'arrow'];
 const SMART = process.argv.includes('--smart');
 // --rush：休整一开始就全奖提前开战（测提前开战经济的最坏情况通胀）
@@ -106,7 +91,7 @@ function smartCell(battle, key, pathSamples) {
 function autoStep(battle, pathSamples) {
   if (battle.towers.length < PLAN.length) {
     const key = PLAN[battle.towers.length];
-    if (battle.gold >= COSTS[key]) {
+    if (battle.gold >= battle.costOf(key)) {
       let placed = false;
       if (SMART && pathSamples) {
         const cell = smartCell(battle, key, pathSamples);
@@ -136,7 +121,7 @@ function autoStep(battle, pathSamples) {
   const upCand = battle.towers
     .filter((t) => t.canUpgrade())
     .sort((a, b) => a.upgradeCost() - b.upgradeCost())[0];
-  if (upCand && (battle.gold >= upCand.upgradeCost() + 20 || battle.gold > 260)) battle.upgradeTower(upCand);
+  if (upCand && (battle.gold >= upCand.upgradeCost() + 20 || battle.gold > 260)) battle.upgradeTower(upCand, upCand.requiresSpecialization() ? 'A' : null);
   // 开波：build 开战；休整期 rush=立刻提前开战（全奖），否则等倒计时尾段
   if (battle.state === 'build') {
     battle.startWave();
@@ -151,7 +136,8 @@ function simulate(w, l) {
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera();
   const fx = new FxLayer(scene);
-  const { pts, pathCells } = pathData(level.map);
+  const layout = createMapLayout(level.map);
+  const samplers = layout.routes.map(makePathSampler);
 
   const leakByWave = [];   // 该关每波漏怪数（1-based 波号 → leaks）
   let lastLeaks = 0;
@@ -162,9 +148,9 @@ function simulate(w, l) {
     onWave: (idx) => { lastWave = idx; },
   };
 
-  const battle = new Battle({ scene, level, sampler: makePathSampler(pts), pathCells, fx, hooks });
+  const battle = new Battle({ scene, level, ...layout, sampler: samplers[0], samplers, fx, hooks });
   battle.speed = SPEED;
-  const pathSamples = SMART ? makePathSamples(battle.sampler) : null;
+  const pathSamples = SMART ? samplers.flatMap((sampler) => makePathSamples(sampler)) : null;
 
   let t = 0, guard = 0;
   while (battle.state !== 'won' && battle.state !== 'lost' && t < MAX_GAME_SECONDS && guard++ < 60000) {
@@ -190,7 +176,7 @@ const rows = [];
 if (verbose) {
   rows.push(simulate(args[0], args[1]));
 } else {
-  for (let w = 0; w < 4; w++) for (let l = 0; l < 10; l++) rows.push(simulate(w, l));
+  for (let w = 0; w < 5; w++) for (let l = 0; l < 10; l++) rows.push(simulate(w, l));
 }
 
 // —— 汇总：漏怪按"波序位置比例"分桶（每关波数不同，取 waveIdx/totalWaves）——

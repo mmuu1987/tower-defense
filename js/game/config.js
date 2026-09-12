@@ -1,5 +1,8 @@
 // 全局配置与世界主题（塔/敌人数值表在 M3 扩充）
-export const GRID = { w: 22, h: 15, cell: 1 };
+export const MAP_DESIGN_GRID = { w: 22, h: 15 };
+export const GRID = { w: 42, h: 28, cell: 1 };
+export const MAP_AREA_SCALE = GRID.w * GRID.h / (MAP_DESIGN_GRID.w * MAP_DESIGN_GRID.h);
+export const MAP_LINEAR_SCALE = Math.sqrt(MAP_AREA_SCALE);
 
 // cellToWorld: 格子中心的世界坐标；地图中心为原点
 export const cellToWorldX = (cx) => (cx - GRID.w / 2 + 0.5) * GRID.cell;
@@ -46,9 +49,9 @@ export const THEMES = [
     id: 'graveyard', name: '幽暗墓园',
     skyTop: 0x160c2b, skyBottom: 0x0f2a1e, fog: 0x182622, fogNear: 28, fogFar: 120,
     sunColor: 0xa8f5c8, sunIntensity: 2.3,
-    hemiSky: 0x4f366b, hemiGround: 0x122a1e, hemiIntensity: 0.65,
-    groundTex: '', groundFallback: 'dark', groundTint: 0x243026,
-    pathTint: 0x3c493f, accent: 0x59f9a8,
+    hemiSky: 0x817393, hemiGround: 0x334d42, hemiIntensity: 0.9,
+    groundTex: '', groundFallback: 'dark', groundTint: 0x91a49a,
+    pathTint: 0x82958b, accent: 0x59f9a8,
     decor: ['tombstone', 'crypt', 'deadPine', 'lantern', 'spookyFence', 'altar', 'ghostStatue'],
   },
 ];
@@ -60,4 +63,3 @@ export const QUALITY_PRESETS = {
 };
 
 export function themeForWorld(worldIdx) { return THEMES[Math.max(0, Math.min(THEMES.length - 1, worldIdx))]; }
-
