@@ -28,16 +28,16 @@ export const SKILL_DEFS = {
     },
   },
   tesla: {
-    signature: { key: 'overload', name: '过载', unlockLevel: 4, cooldown: 13 },
-    ultimate: { key: 'empBlast', name: '电磁脉冲', unlockLevel: 8, cooldown: 27 },
+    signature: { key: 'overload', name: '过载', unlockLevel: 4, cooldown: 16 },
+    ultimate: { key: 'empBlast', name: '电磁脉冲', unlockLevel: 8, cooldown: 22 },
     specializations: {
       A: { key: 'chainMaster', name: '连锁增强', desc: '更多弹跳目标，更远弹跳距离', modifiers: { chains: 4, chainRangePct: 0.3, signatureDuration: 1 } },
       B: { key: 'paralyze', name: '瘫痪', desc: '电击附带减速效果', modifiers: { slow: { pct: 0.35, dur: 1.5 }, damagePct: 0.15, slowedDamagePct: 0.12 } },
     },
   },
   frost: {
-    signature: { key: 'frostNova', name: '冰环新星', unlockLevel: 4, cooldown: 12 },
-    ultimate: { key: 'blizzardField', name: '极寒领域', unlockLevel: 8, cooldown: 30 },
+    signature: { key: 'frostNova', name: '冰环新星', unlockLevel: 4, cooldown: 15 },
+    ultimate: { key: 'blizzardField', name: '极寒领域', unlockLevel: 8, cooldown: 24 },
     specializations: {
       A: { key: 'deepFreeze', name: '深度冻结', desc: '更强的减速效果', modifiers: { slowPct: 0.12, slowDurationPct: 0.3, signatureSlowPct: 0.1 } },
       B: { key: 'frozenCycle', name: '冰冻循环', desc: '更频繁的冰环释放', modifiers: { ratePct: 0.2, signatureCooldownPct: -0.25, slowedDamagePct: 0.18 } },
