@@ -5,15 +5,15 @@ import { compareScores, targetMatches, targetScore, xzDistanceSq } from './comba
 export const SKILL_DEFS = {
   arrow: {
     signature: { key: 'arrowVolley', name: '连射', unlockLevel: 4, cooldown: 12 },
-    ultimate: { key: 'arrowRain', name: '箭雨', unlockLevel: 8, cooldown: 24 },
+    ultimate: { key: 'arrowRain', name: '箭雨', unlockLevel: 8, cooldown: 20 },
     specializations: {
       A: { key: 'rapid', name: '快速清杂', desc: '攻速提高，连射冷却缩短', modifiers: { ratePct: 0.16, signatureCooldownPct: -0.2 } },
       B: { key: 'mark', name: '单点压制', desc: '对高威胁目标造成更高伤害', modifiers: { damagePct: 0.18, ultimateDamagePct: 0.25 } },
     },
   },
   cannon: {
-    signature: { key: 'barrage', name: '集束炮击', unlockLevel: 4, cooldown: 14 },
-    ultimate: { key: 'carpetBombing', name: '地毯轰炸', unlockLevel: 8, cooldown: 28 },
+    signature: { key: 'barrage', name: '集束炮击', unlockLevel: 4, cooldown: 12 },
+    ultimate: { key: 'carpetBombing', name: '地毯轰炸', unlockLevel: 8, cooldown: 22 },
     specializations: {
       A: { key: 'armorBreaker', name: '破甲穿透', desc: '穿透护甲，对精英和Boss更有效', modifiers: { armorPenetration: 8, eliteDamagePct: 0.15, bossDamagePct: 0.2 } },
       B: { key: 'blastRadius', name: '范围增强', desc: '溅射范围扩大，影响更多目标', modifiers: { splashPct: 0.25, damagePct: 0.12, signatureCooldownPct: -0.15 } },
@@ -21,14 +21,14 @@ export const SKILL_DEFS = {
   },
   sniper: {
     signature: { key: 'weakSpot', name: '弱点狙击', unlockLevel: 4, cooldown: 15 },
-    ultimate: { key: 'markedForDeath', name: '狙击标记', unlockLevel: 8, cooldown: 25 },
+    ultimate: { key: 'markedForDeath', name: '狙击标记', unlockLevel: 8, cooldown: 22 },
     specializations: {
       A: { key: 'apRounds', name: '穿甲弹', desc: '更强的护甲穿透和真实伤害', modifiers: { trueDamage: true, signatureDamagePct: 0.5 } },
       B: { key: 'headshot', name: '爆头', desc: '有概率造成暴击伤害', modifiers: { critChance: 0.25, critMultiplier: 2.0, ratePct: 0.18, signatureCooldownPct: -0.2 } },
     },
   },
   tesla: {
-    signature: { key: 'overload', name: '过载', unlockLevel: 4, cooldown: 16 },
+    signature: { key: 'overload', name: '过载', unlockLevel: 4, cooldown: 13 },
     ultimate: { key: 'empBlast', name: '电磁脉冲', unlockLevel: 8, cooldown: 22 },
     specializations: {
       A: { key: 'chainMaster', name: '连锁增强', desc: '更多弹跳目标，更远弹跳距离', modifiers: { chains: 4, chainRangePct: 0.3, signatureDuration: 1 } },
@@ -36,7 +36,7 @@ export const SKILL_DEFS = {
     },
   },
   frost: {
-    signature: { key: 'frostNova', name: '冰环新星', unlockLevel: 4, cooldown: 17 },
+    signature: { key: 'frostNova', name: '冰环新星', unlockLevel: 4, cooldown: 16 },
     ultimate: { key: 'blizzardField', name: '极寒领域', unlockLevel: 8, cooldown: 24 },
     specializations: {
       A: { key: 'deepFreeze', name: '深度冻结', desc: '更强的减速效果', modifiers: { slowPct: 0.12, slowDurationPct: 0.3, signatureSlowPct: 0.1 } },
@@ -45,7 +45,7 @@ export const SKILL_DEFS = {
   },
   venom: {
     signature: { key: 'toxicBurst', name: '毒液爆破', unlockLevel: 4, cooldown: 13 },
-    ultimate: { key: 'plagueCloud', name: '毒云区', unlockLevel: 8, cooldown: 26 },
+    ultimate: { key: 'plagueCloud', name: '毒云区', unlockLevel: 8, cooldown: 22 },
     specializations: {
       A: { key: 'spread', name: '有限传播', desc: '毒液爆破范围更大，毒层更易传播', modifiers: { signatureRadius: 1.2, poisonMaxStacks: 1 } },
       B: { key: 'toxin', name: '单体叠层', desc: '毒伤更高，治疗抑制更久', modifiers: { poisonDamagePct: 0.35, healBlockPct: 0.35 } },
@@ -53,7 +53,7 @@ export const SKILL_DEFS = {
   },
   beacon: {
     signature: { key: 'rally', name: '集结号令', unlockLevel: 4, cooldown: 16 },
-    ultimate: { key: 'overdrive', name: '超载指令', unlockLevel: 8, cooldown: 30 },
+    ultimate: { key: 'overdrive', name: '超载指令', unlockLevel: 8, cooldown: 25 },
     specializations: {
       A: { key: 'command', name: '火力增益', desc: '光环提高伤害与攻速', modifiers: { auraDamagePct: 0.12, auraRatePct: 0.08 } },
       B: { key: 'tactics', name: '技能循环', desc: '光环内技能冷却更快', modifiers: { auraSkillCooldownPct: 0.18, signatureCooldownPct: -0.12 } },
@@ -183,8 +183,8 @@ function castBeacon(tower, tier, ctx) {
   if (!affected.length || !affected.some((other) => other.acquire(ctx.enemies, ctx))) return false;
   const duration = tier === 'signature' ? 5 : 8;
   const boost = tier === 'signature'
-    ? { damagePct: 0.28, ratePct: 0.22, skillCooldownPct: 0.1 }
-    : { damagePct: 0.55, ratePct: 0.42, skillCooldownPct: 0.28 };
+    ? { damagePct: 0.25, ratePct: 0.20, skillCooldownPct: 0.1 }
+    : { damagePct: 0.45, ratePct: 0.35, skillCooldownPct: 0.25 };
   for (const target of affected) target.addTimedBuff(tower.id, ctx.time, duration, boost, tier);
   // G5: 增强特效
   const color = tier === 'signature' ? 0x62d7ff : 0xffd36a;
@@ -247,8 +247,8 @@ function castSniper(tower, tier, ctx) {
   if (!target) return false;
   const from = muzzleOf(tower);
   if (tier === 'signature') {
-    // 弱点狙击：280% 伤害，对精英/Boss 额外加成
-    let dmgMul = 2.8;
+    // 弱点狙击：220% 伤害，对精英/Boss 额外加成
+    let dmgMul = 2.2;
     const mods = specializationModifiers(tower);
     if (mods.signatureDamagePct) dmgMul += mods.signatureDamagePct;
     if (target.def.rank === 'elite') dmgMul += 0.4;
@@ -264,13 +264,13 @@ function castSniper(tower, tier, ctx) {
     ctx.fx.flash(from, 0xffea6a, 10, 0.15);
     return true;
   }
-  // 狙击标记：目标受到所有来源伤害 +30%
+  // 狙击标记：目标受到所有来源伤害 +25%
   if (!target.effects) target.effects = {};
   target.effects.marked = {
     sourceTowerId: tower.id,
     until: ctx.time + 8,
-    allDamagePct: 0.3,
-    sniperDamagePct: 0.25,
+    allDamagePct: 0.25,
+    sniperDamagePct: 0.2,
   };
   // G5: 终极技能冲击波
   ctx.fx.ring(target.pos, 1.0, 0xff4a6a, 0.4);
@@ -287,7 +287,7 @@ function castTesla(tower, tier, ctx) {
     const duration = 3 + (mods.signatureDuration || 0);
     tower.overloadUntil = ctx.time + duration;
     tower.overloadRate = 2.2;
-    tower.overloadDamageMul = 0.85;
+    tower.overloadDamageMul = 0.75;
     // G5: 招牌技能双层波纹
     ctx.fx.ring(tower.pos, 1.0, 0x6aaaff, 0.3);
     ctx.fx.ring(tower.pos, 1.2, 0x6aaaff, 0.5);
@@ -298,7 +298,7 @@ function castTesla(tower, tier, ctx) {
   const targets = targetsInRange(tower, ctx, radius);
   if (!targets.length) return false;
   for (const e of targets) {
-    ctx.hitEnemy(e, Math.round(s.dmg * 1.8), {
+    ctx.hitEnemy(e, Math.round(s.dmg * 2.2), {
       ...damageOpts(tower),
       effects: { slow: { pct: 0.7, dur: 2.5 } },
     });
@@ -320,7 +320,7 @@ function castFrost(tower, tier, ctx) {
     const slowDur = s.slow.dur + 1.5;
     const targets = targetsInRange(tower, ctx, radius);
     for (const e of targets) {
-      ctx.hitEnemy(e, Math.round(s.dmg * 0.8), {
+      ctx.hitEnemy(e, Math.round(s.dmg * 0.6), {
         ...damageOpts(tower),
         effects: { slow: { pct: Math.min(0.95, slowPct), dur: slowDur } },
       });
@@ -338,7 +338,7 @@ function castFrost(tower, tier, ctx) {
   const nearby = ctx.queryEnemiesRadius(fieldPos.x, fieldPos.z, radius, (e) => e.alive);
   if (!nearby.length) return false;
   for (const e of nearby) {
-    ctx.hitEnemy(e, Math.round(s.dmg * 2.5), {
+    ctx.hitEnemy(e, Math.round(s.dmg * 3.0), {
       ...damageOpts(tower),
       effects: { slow: { pct: 0.75, dur: 6 } },
     });

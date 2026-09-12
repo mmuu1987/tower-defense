@@ -61,13 +61,28 @@ async function runLevel(worldIdx, lvlIdx) {
     hooks: { camera: new THREE.PerspectiveCamera() }
   });
 
-  // 追踪技能数据
+  // 追踪技能数据和伤害
+  const skillDamage = {};
+  const originalHit = battle.hitEnemy.bind(battle);
+  battle.hitEnemy = (enemy, damage, opts) => {
+    if(opts?.sourceTowerId) {
+      const tower = battle.towers.find(t => t.id === opts.sourceTowerId);
+      if(tower && battle._activeSkill) {
+        const key = tower.key + ':' + battle._activeSkill;
+        skillDamage[key] = (skillDamage[key] || 0) + damage;
+      }
+    }
+    return originalHit(enemy, damage, opts);
+  };
+
   const onSkill = (tower, tier) => {
     const key = tower.key;
-    if(!stats.towers[key]) stats.towers[key] = { sig: 0, ult: 0, damage: 0, casts: 0 };
+    if(!stats.towers[key]) stats.towers[key] = { sig: 0, ult: 0, sigDmg: 0, ultDmg: 0, casts: 0 };
+    battle._activeSkill = tier;
     if(tier === 'signature') stats.towers[key].sig++;
     else stats.towers[key].ult++;
     stats.towers[key].casts++;
+    setTimeout(() => { battle._activeSkill = null; }, 100);
   };
   battle.hooks.onSkill = onSkill;
 
@@ -84,6 +99,15 @@ async function runLevel(worldIdx, lvlIdx) {
   stats.time = battle.time;
   stats.kills = battle.kills;
   stats.leaks = battle.leaks;
+
+  // 汇总技能伤害
+  for(const [key, dmg] of Object.entries(skillDamage)) {
+    const [towerKey, tier] = key.split(':');
+    if(stats.towers[towerKey]) {
+      if(tier === 'signature') stats.towers[towerKey].sigDmg = dmg;
+      else stats.towers[towerKey].ultDmg = dmg;
+    }
+  }
 
   battle.destroy();
   return stats;
@@ -112,11 +136,13 @@ async function runAll() {
     if(r.win) summary.wins++; else summary.losses++;
 
     for(const [key, data] of Object.entries(r.towers)) {
-      if(!summary.byTower[key]) summary.byTower[key] = { sig: 0, ult: 0, total: 0, levels: 0 };
+      if(!summary.byTower[key]) summary.byTower[key] = { sig: 0, ult: 0, sigDmg: 0, ultDmg: 0, total: 0, levels: 0 };
       summary.byTower[key].sig += data.sig;
       summary.byTower[key].ult += data.ult;
       summary.byTower[key].total += data.casts;
       summary.byTower[key].levels++;
+      summary.byTower[key].sigDmg += data.sigDmg || 0;
+      summary.byTower[key].ultDmg += data.ultDmg || 0;
     }
   }
 
@@ -125,8 +151,10 @@ async function runAll() {
 
   for(const [key, data] of Object.entries(summary.byTower)) {
     const avgSig = (data.sig / data.levels).toFixed(1);
+    const avgSigDmg = (data.sigDmg / data.levels).toFixed(0);
+    const avgUltDmg = (data.ultDmg / data.levels).toFixed(0);
     const avgUlt = (data.ult / data.levels).toFixed(1);
-    console.log(`${key.padEnd(8)} - 招牌: ${avgSig.padStart(5)}/关  终极: ${avgUlt.padStart(5)}/关  总计: ${data.total}`);
+    console.log(`${key.padEnd(8)} - 招牌: ${avgSig.padStart(5)}/关 (${avgSigDmg.padStart(6)}伤)  终极: ${avgUlt.padStart(5)}/关 (${avgUltDmg.padStart(6)}伤)`);
   }
 
   return { results, summary };
@@ -135,7 +163,7 @@ async function runAll() {
 // 执行
 runAll().then(data => {
   console.log('\n数据已保存到 tools/balance-report.json');
-  writeFileSync('tools/balance-report.json', JSON.stringify(data, null, 2));
+  writeFileSync('balance-report.json', JSON.stringify(data, null, 2));
 }).catch(err => {
   console.error('模拟失败:', err);
   process.exit(1);
