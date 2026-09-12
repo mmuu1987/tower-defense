@@ -9,23 +9,26 @@ import { writeFileSync } from 'fs';
 
 const fx = Object.fromEntries(['update','flash','ring','spark','burst','lightning','beam','decal','shockwave'].map(k=>[k,()=>{}]));
 
-// 自动建造策略：每个地图放置 4-6 座塔的混合配置
+// 固定建造策略：每个地图恰好放置 7 座塔（每种各 1 座）
 function autoPlace(battle) {
   const towers = ['arrow','cannon','sniper','tesla','frost','venom','beacon'];
   const placed = [];
-  let attempts = 0;
 
-  while(placed.length < 6 && attempts < 200) {
-    attempts++;
-    const cx = Math.floor(Math.random() * 42);
-    const cz = Math.floor(Math.random() * 28);
-    const key = towers[Math.floor(Math.random() * towers.length)];
+  // 为每种塔类型各放置 1 座
+  for (const key of towers) {
+    let attempts = 0;
+    while (attempts < 50) {
+      attempts++;
+      const cx = Math.floor(Math.random() * 42);
+      const cz = Math.floor(Math.random() * 28);
 
-    if(!battle.isBuildable(cx,cz)) continue;
-    battle.selectBuild(key);
-    if(battle.tryPlace(cx,cz) === true) {
-      placed.push(battle.selectedTower);
-      battle.gold += TOWER_DEFS[key].cost;
+      if (!battle.isBuildable(cx, cz)) continue;
+      battle.selectBuild(key);
+      if (battle.tryPlace(cx, cz) === true) {
+        placed.push(battle.selectedTower);
+        battle.gold += TOWER_DEFS[key].cost;
+        break;  // 成功放置后跳出循环
+      }
     }
   }
 
