@@ -36,7 +36,7 @@ export const SKILL_DEFS = {
     },
   },
   frost: {
-    signature: { key: 'frostNova', name: '冰环新星', unlockLevel: 4, cooldown: 15 },
+    signature: { key: 'frostNova', name: '冰环新星', unlockLevel: 4, cooldown: 17 },
     ultimate: { key: 'blizzardField', name: '极寒领域', unlockLevel: 8, cooldown: 24 },
     specializations: {
       A: { key: 'deepFreeze', name: '深度冻结', desc: '更强的减速效果', modifiers: { slowPct: 0.12, slowDurationPct: 0.3, signatureSlowPct: 0.1 } },
@@ -298,7 +298,7 @@ function castTesla(tower, tier, ctx) {
   const targets = targetsInRange(tower, ctx, radius);
   if (!targets.length) return false;
   for (const e of targets) {
-    ctx.hitEnemy(e, Math.round(s.dmg * 1.5), {
+    ctx.hitEnemy(e, Math.round(s.dmg * 1.8), {
       ...damageOpts(tower),
       effects: { slow: { pct: 0.7, dur: 2.5 } },
     });
@@ -338,7 +338,7 @@ function castFrost(tower, tier, ctx) {
   const nearby = ctx.queryEnemiesRadius(fieldPos.x, fieldPos.z, radius, (e) => e.alive);
   if (!nearby.length) return false;
   for (const e of nearby) {
-    ctx.hitEnemy(e, Math.round(s.dmg * 2.0), {
+    ctx.hitEnemy(e, Math.round(s.dmg * 2.5), {
       ...damageOpts(tower),
       effects: { slow: { pct: 0.75, dur: 6 } },
     });
