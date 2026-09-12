@@ -37,7 +37,7 @@ export const SKILL_DEFS = {
   },
   frost: {
     signature: { key: 'frostNova', name: '冰环新星', unlockLevel: 4, cooldown: 16 },
-    ultimate: { key: 'blizzardField', name: '极寒领域', unlockLevel: 8, cooldown: 24 },
+    ultimate: { key: 'blizzardField', name: '极寒领域', unlockLevel: 8, cooldown: 20 },
     specializations: {
       A: { key: 'deepFreeze', name: '深度冻结', desc: '更强的减速效果', modifiers: { slowPct: 0.12, slowDurationPct: 0.3, signatureSlowPct: 0.1 } },
       B: { key: 'frozenCycle', name: '冰冻循环', desc: '更频繁的冰环释放', modifiers: { ratePct: 0.2, signatureCooldownPct: -0.25, slowedDamagePct: 0.18 } },
@@ -342,6 +342,13 @@ function castFrost(tower, tier, ctx) {
       ...damageOpts(tower),
       effects: { slow: { pct: 0.75, dur: 6 } },
     });
+    // 极寒领域增伤效果：被冰冻的敌人受到所有来源伤害 +15%
+    if (!e.effects) e.effects = {};
+    e.effects.frostVulnerable = {
+      sourceTowerId: tower.id,
+      until: ctx.time + 6,
+      allDamagePct: 0.15,
+    };
   }
   // G5: 终极技能冲击波
   ctx.fx.ring(fieldPos, radius * 0.6, 0x3aa4ff, 0.5);
