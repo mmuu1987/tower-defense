@@ -393,3 +393,14 @@ canvas{ display:block; }
   font-weight:600; background:#1a1d26; border:1px solid #3a4556; border-radius:3px;
   color:#8b92a7; pointer-events:none; font-family:monospace; }
 @media(max-width:700px){ .skill-key{ display:none; } }
+
+/* ———— G5 技能按钮动画 ———— */
+.skill-btn{ transition:transform 0.1s,box-shadow 0.15s; }
+.skill-btn:active{ transform:scale(0.95); }
+.skill-btn:not(.cooling):hover{ box-shadow:0 0 12px var(--skill-glow,#4ade80); }
+.skill-btn.cooling{ animation:cooldown-pulse 0.3s ease-out; }
+@keyframes cooldown-pulse{
+  0%{ transform:scale(1); }
+  50%{ transform:scale(1.05); }
+  100%{ transform:scale(1); }
+}

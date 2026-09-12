@@ -131,6 +131,9 @@ function castArrow(tower, tier, ctx) {
         ...damageOpts(tower), kind: tower.def.proj, pierce: false,
       });
     }
+    // G5: 招牌技能双层波纹
+    ctx.fx.ring(from, 0.8, 0xd8e8ff, 0.3);
+    ctx.fx.ring(from, 1.0, 0xd8e8ff, 0.4);
     ctx.fx.flash(from, 0xd8e8ff, 7, 0.1);
     return true;
   }
@@ -141,7 +144,10 @@ function castArrow(tower, tier, ctx) {
   for (const e of chosen) ctx.projectiles.spawnHoming(from, e, Math.round(s.dmg * damageMul), s.projSpeed, {
     ...damageOpts(tower, { damageType: 'physical' }), kind: tower.def.proj,
   });
-  ctx.fx.ring(tower.pos, 1.2, 0xffd36a, 0.3);
+  // G5: 终极技能冲击波
+  ctx.fx.ring(tower.pos, 0.8, 0xffd36a, 0.4);
+  ctx.fx.ring(tower.pos, 1.2, 0xffd36a, 0.6);
+  ctx.fx.shockwave?.(tower.pos.clone().setY(0.3), 1.2);
   return true;
 }
 
@@ -155,12 +161,18 @@ function castVenom(tower, tier, ctx) {
     ctx.projectiles.spawnHoming(from, target, Math.round(s.dmg * 1.5), s.projSpeed, {
       ...damageOpts(tower, { effects: { poison }, splash: tower.skillRadius(), targetLimit: 6 }), kind: 'venom',
     });
+    // G5: 招牌技能双层波纹
+    ctx.fx.ring(from, 0.7, 0x8dff79, 0.3);
+    ctx.fx.ring(from, 0.9, 0x8dff79, 0.4);
     ctx.fx.flash(from, 0x8dff79, 8, 0.1);
     return true;
   }
   const radius = tower.skillRadius(tier);
   if (!ctx.createPoisonField?.(tower, target.pos, { radius, duration: 6, poison, targetLimit: 12 })) return false;
-  ctx.fx.ring(target.pos, radius, 0x75e66f, 0.55);
+  // G5: 终极技能冲击波
+  ctx.fx.ring(target.pos, radius * 0.6, 0x75e66f, 0.4);
+  ctx.fx.ring(target.pos, radius, 0x75e66f, 0.65);
+  ctx.fx.shockwave?.(target.pos.clone().setY(0.3), radius);
   return true;
 }
 
@@ -174,7 +186,17 @@ function castBeacon(tower, tier, ctx) {
     ? { damagePct: 0.28, ratePct: 0.22, skillCooldownPct: 0.1 }
     : { damagePct: 0.55, ratePct: 0.42, skillCooldownPct: 0.28 };
   for (const target of affected) target.addTimedBuff(tower.id, ctx.time, duration, boost, tier);
-  ctx.fx.ring(tower.pos, tower.combatStats().range, tier === 'signature' ? 0x62d7ff : 0xffd36a, 0.65);
+  // G5: 增强特效
+  const color = tier === 'signature' ? 0x62d7ff : 0xffd36a;
+  const range = tower.combatStats().range;
+  if (tier === 'signature') {
+    ctx.fx.ring(tower.pos, range * 0.8, color, 0.4);
+    ctx.fx.ring(tower.pos, range, color, 0.65);
+  } else {
+    ctx.fx.ring(tower.pos, range * 0.6, color, 0.4);
+    ctx.fx.ring(tower.pos, range, color, 0.75);
+    ctx.fx.shockwave?.(tower.pos.clone().setY(0.3), range);
+  }
   return true;
 }
 
@@ -192,6 +214,9 @@ function castCannon(tower, tier, ctx) {
         ...damageOpts(tower), splash: s.splash,
       });
     }
+    // G5: 招牌技能双层波纹
+    ctx.fx.ring(from, 0.7, 0xff9a4a, 0.3);
+    ctx.fx.ring(from, 0.9, 0xff9a4a, 0.4);
     ctx.fx.flash(from, 0xff9a4a, 8, 0.12);
     return true;
   }
@@ -209,7 +234,10 @@ function castCannon(tower, tier, ctx) {
       ...damageOpts(tower), splash: 2.5,
     });
   }
+  // G5: 终极技能冲击波
+  ctx.fx.ring(bombingSite, radius * 0.6, 0xff6a3a, 0.5);
   ctx.fx.ring(bombingSite, radius, 0xff6a3a, 0.7);
+  ctx.fx.shockwave?.(bombingSite.clone().setY(0.3), radius);
   return true;
 }
 
@@ -230,6 +258,9 @@ function castSniper(tower, tier, ctx) {
       ...damageOpts(tower, { damageType: mods.trueDamage ? 'true' : 'physical' }),
       kind: tower.def.proj, pierce: true,
     });
+    // G5: 招牌技能双层波纹
+    ctx.fx.ring(from, 0.6, 0xffea6a, 0.3);
+    ctx.fx.ring(from, 0.8, 0xffea6a, 0.4);
     ctx.fx.flash(from, 0xffea6a, 10, 0.15);
     return true;
   }
@@ -241,7 +272,10 @@ function castSniper(tower, tier, ctx) {
     allDamagePct: 0.3,
     sniperDamagePct: 0.25,
   };
+  // G5: 终极技能冲击波
+  ctx.fx.ring(target.pos, 1.0, 0xff4a6a, 0.4);
   ctx.fx.ring(target.pos, 1.5, 0xff4a6a, 0.6);
+  ctx.fx.shockwave?.(target.pos.clone().setY(0.3), 1.5);
   return true;
 }
 
@@ -254,6 +288,8 @@ function castTesla(tower, tier, ctx) {
     tower.overloadUntil = ctx.time + duration;
     tower.overloadRate = 2.2;
     tower.overloadDamageMul = 0.85;
+    // G5: 招牌技能双层波纹
+    ctx.fx.ring(tower.pos, 1.0, 0x6aaaff, 0.3);
     ctx.fx.ring(tower.pos, 1.2, 0x6aaaff, 0.5);
     return true;
   }
@@ -267,6 +303,8 @@ function castTesla(tower, tier, ctx) {
       effects: { slow: { pct: 0.7, dur: 2.5 } },
     });
   }
+  // G5: 终极技能冲击波
+  ctx.fx.ring(tower.pos, radius * 0.6, 0x3a8aff, 0.5);
   ctx.fx.ring(tower.pos, radius, 0x3a8aff, 0.8);
   ctx.fx.shockwave?.(tower.pos.clone().setY(0.3), radius);
   return true;
@@ -287,6 +325,8 @@ function castFrost(tower, tier, ctx) {
         effects: { slow: { pct: Math.min(0.95, slowPct), dur: slowDur } },
       });
     }
+    // G5: 招牌技能双层波纹
+    ctx.fx.ring(tower.pos, radius * 0.8, 0x6ad4ff, 0.4);
     ctx.fx.ring(tower.pos, radius, 0x6ad4ff, 0.7);
     return true;
   }
@@ -303,7 +343,10 @@ function castFrost(tower, tier, ctx) {
       effects: { slow: { pct: 0.75, dur: 6 } },
     });
   }
+  // G5: 终极技能冲击波
+  ctx.fx.ring(fieldPos, radius * 0.6, 0x3aa4ff, 0.5);
   ctx.fx.ring(fieldPos, radius, 0x3aa4ff, 0.8);
+  ctx.fx.shockwave?.(fieldPos.clone().setY(0.3), radius);
   return true;
 }
 
