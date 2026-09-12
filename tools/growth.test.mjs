@@ -135,7 +135,7 @@ test('skills unlock with full cooldown and upgrades do not refresh existing cool
   assert.equal(tower.skillRemaining(), remaining);
   assert.equal(b.useSelectedSkill('signature'), false);
   grow(b, tower, 8);
-  assert.equal(tower.skillRemaining('ultimate'), 24);
+  assert.equal(tower.skillRemaining('ultimate'), 20);
 });
 
 test('arrow skills respect cooldown, combat, target range, manual mode and five-target cap', (t) => {

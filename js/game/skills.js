@@ -207,7 +207,7 @@ function castCannon(tower, tier, ctx) {
   const from = muzzleOf(tower);
   if (tier === 'signature') {
     // 集束炮击：立即发射 4 枚炮弹
-    const dmg = Math.round(s.dmg * 0.6);
+    const dmg = Math.round(s.dmg * 0.5);
     const targetPos = target.pos.clone();
     for (let i = 0; i < 4; i++) {
       ctx.projectiles.spawnMortar(from, targetPos, dmg, s.projSpeed * (1 + i * 0.15), {
@@ -247,12 +247,12 @@ function castSniper(tower, tier, ctx) {
   if (!target) return false;
   const from = muzzleOf(tower);
   if (tier === 'signature') {
-    // 弱点狙击：220% 伤害，对精英/Boss 额外加成
-    let dmgMul = 2.2;
+    // 弱点狙击：180% 伤害，对精英/Boss 额外加成
+    let dmgMul = 1.8;
     const mods = specializationModifiers(tower);
     if (mods.signatureDamagePct) dmgMul += mods.signatureDamagePct;
-    if (target.def.rank === 'elite') dmgMul += 0.4;
-    if (target.def.shape === 'boss') dmgMul += 0.6;
+    if (target.def.rank === 'elite') dmgMul += 0.3;
+    if (target.def.shape === 'boss') dmgMul += 0.4;
     const dmg = Math.round(s.dmg * dmgMul);
     ctx.projectiles.spawnHoming(from, target, dmg, s.projSpeed, {
       ...damageOpts(tower, { damageType: mods.trueDamage ? 'true' : 'physical' }),
