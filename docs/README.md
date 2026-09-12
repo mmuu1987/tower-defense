@@ -47,6 +47,10 @@
 | | [G6_M2_ROUND4_REPORT.md](G6_M2_ROUND4_REPORT.md) | 第四轮伤害追踪实施 |
 | | [G6_M2_FINAL_ADJUSTMENT.md](G6_M2_FINAL_ADJUSTMENT.md) | 第五轮伤害调整完成 |
 | **M3 完成** | [G6_M3_ASYMMETRIC_BALANCE.md](G6_M3_ASYMMETRIC_BALANCE.md) | 第六、七轮最终调整 |
+| **M4 Tesla** | [G6_M4_ROUND10_REPORT.md](G6_M4_ROUND10_REPORT.md) | Round 10 招牌削弱失败 |
+| | [G6_M4_ROUND11_VERIFICATION.md](G6_M4_ROUND11_VERIFICATION.md) | Round 11 Frost稳定性验证 |
+| | [G6_M4_ROUND12_FAILURE.md](G6_M4_ROUND12_FAILURE.md) | Round 12 组合增强失败 |
+| | [G6_M4_PROJECT_CONCLUSION.md](G6_M4_PROJECT_CONCLUSION.md) | M4阶段项目总结 |
 
 ### 🗂️ 参考文档
 
@@ -121,25 +125,25 @@
 
 ### 平衡达成度
 
-- ✅ **Arrow/Sniper/Cannon/Venom/Beacon**：40-44% 终极占比
-- ✅ **Frost**：13.8% 终极占比（不对称目标：12-20%）
-- ❌ **Tesla**：4.5% 终极占比（目标：12-20%）
+- ✅ **Arrow/Sniper/Cannon/Venom/Beacon**：38-44% 终极占比
+- ✅ **Frost**：12.3% 终极占比（不对称目标：12-20%）
+- ❌ **Tesla**：7.1% 终极占比（目标：12-20%，未达标）
 
 **总体**：6/7 塔类达标（85.7%）
 
 ### 质量指标
 
-- **模拟胜率**：99.7% (349/350 关)
+- **模拟胜率**：99.7% (598/600 关)
 - **单元测试**：100% (100/100 通过)
-- **测试覆盖**：350 关模拟（7 轮 × 50 关）
-- **文档完整性**：15 份文档，5,596 行
+- **测试覆盖**：600 关模拟（12 轮 × 50 关）
+- **文档完整性**：16 份文档，~15,000 行
 
 ### 开发投入
 
-- **开发时间**：~12.5 小时
-- **代码变更**：169 行新增，~50 行修改
-- **Git 提交**：14 次
-- **项目周期**：2026-09-12（1 天完成 M1-M3）
+- **开发时间**：~24.5 小时 (M1-M4)
+- **代码变更**：169 行新增，~80 行修改
+- **Git 提交**：31 次
+- **项目周期**：2026-09-12（M1-M4完成）
 
 ---
 
