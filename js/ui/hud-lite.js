@@ -112,7 +112,8 @@ export function createHud(battle, { audio, onSpeed, onQuit, onPause }) {
       const skills = ['signature', 'ultimate'].map((tier) => {
         const skill = skillFor(t, tier);
         if (!skill || t.level + 1 < skill.unlockLevel) return '';
-        return `<button class="skill-btn" data-tier="${tier}" title="${skill.name} (${tier === 'signature' ? 'Z' : 'X'})">${icon(tier === 'signature' ? 'zap' : 'sparkles')}<span>${skill.name}</span><small></small></button>`;
+        const key = tier === 'signature' ? 'Z' : 'X';
+        return `<button class="skill-btn" data-tier="${tier}" title="${skill.name} (${key})">${icon(tier === 'signature' ? 'zap' : 'sparkles')}<span>${skill.name}</span><kbd class="skill-key">${key}</kbd><small></small></button>`;
       }).join('');
       panel.innerHTML = `
         <div class="tower-heading"><img class="dock-thumb" src="${t.def.icon}" alt=""><b>${t.def.name}<span class="lv ${isMax ? 'max-tag' : ''}">Lv.${t.level + 1}${isMax ? ' MAX' : ''}</span></b></div>
@@ -150,10 +151,19 @@ export function createHud(battle, { audio, onSpeed, onQuit, onPause }) {
       : `伤害 ${s.dmg} · 攻速 ${s.rate.toFixed(2)}/s · 射程 ${s.range.toFixed(1)}${extra ? ' · ' + extra : ''}`;
     for (const btn of panel.querySelectorAll('#p-up, .spec-btn')) btn.disabled = !battle.canCommand() || battle.gold < t.upgradeCost();
     for (const btn of panel.querySelectorAll('.skill-btn')) {
-      const ready = t.canUseSkill(btn.dataset.tier);
+      const tier = btn.dataset.tier;
+      const ready = t.canUseSkill(tier);
       btn.disabled = !battle.canCommand() || battle.state !== 'combat' || !ready;
       btn.classList.toggle('ready', !btn.disabled);
-      btn.querySelector('small').textContent = ready ? (battle.state === 'combat' ? '就绪' : '待战') : `${t.skillRemaining(btn.dataset.tier).toFixed(1)}s`;
+      btn.querySelector('small').textContent = ready ? (battle.state === 'combat' ? '就绪' : '待战') : `${t.skillRemaining(tier).toFixed(1)}s`;
+      // G5: 技能冷却进度条
+      const skill = skillFor(t, tier);
+      if (skill) {
+        const remaining = t.skillRemaining(tier);
+        const progress = remaining > 0 ? 1 - (remaining / skill.cooldown) : 1;
+        btn.style.setProperty('--progress', progress.toFixed(3));
+        btn.style.setProperty('--cooling', remaining > 0 ? '1' : '0');
+      }
     }
     panel.querySelector('#p-sell').disabled = !battle.canCommand();
     const mode = panel.querySelector('#p-mode');
