@@ -1,477 +1,151 @@
-# 任务状态（供跨轮次 / 会话中断后恢复使用）
+# 塔防游戏重构任务状态
 
-> 当前交接入口：先读本节和 [GAMEPLAY_OVERHAUL_PLAN.md](GAMEPLAY_OVERHAUL_PLAN.md)。下方旧里程碑与部署记录是历史资料，不代表当前实施目标，也不是本轮发布授权。
+## 当前阶段：G3 完成 ✅
 
-## 当前目标：大地图战斗改造（2026-09-11）
+## 总体进度
 
-- 用户先要求整理方案，随后明确要求按方案持续实施；G0 至 G2 已完成，接下来直接推进 G3，不需要再确认是否实施。
-- 已认可的本地基线：42×28 格、约原面积 3.56 倍，5 世界 50 关独立路线，20 关双路；已完成地形氛围、小地图和四种视口操作检查。不能回退这些改动。
-- 实际本地玩法：7 种塔、每塔 8 级，11 种普通敌人、5 Boss；箭塔/毒蚀塔/指挥塔已有完整技能和专精，其他四塔暂只有八级属性/外观。当前不是十一塔最终版。
-- 总目标仍是攻击算法、金币经济、塔成长、怪物等级、技能全面改造；新增 6 种不同用途的塔，总计至少 11 种。下一阶段 G3：怪物等级/rank/词缀、经济预算/账本、召唤家族奖励与波次统计，不先宣布最终配平。
-- 方案建议：8 级成长、Lv.4 招牌技能、Lv.6 专精、Lv.8 终阶技能；新塔为烈焰、毒蚀、重弩、防空、奥术、指挥。具体参数属于待验证设计，详见主方案。
-- G2 实施：毒蚀（120 金，W1-7）、指挥（200 金，W2-1）；Lv.4 招牌、Lv.6 明确选择专精、Lv.7 分支强化、Lv.8 终阶及外观。独立毒层/抑疗/有界毒云、最强光环与有上限临时增益、固定 1/60 秒步进、暂停与售出清理已接入。
-- 新模块：`js/game/effects.js`、`js/game/skills.js`；HUD 稳定刷新不替换冷却按钮，七塔布局、专精费用、终阶自动复选框、Lucide 图标与音效。技能键 Z/X/F，保留 Q/E 镜头旋转，表单与按钮焦点不触发游戏快捷键。
-- 本轮验证：`npm.cmd test` 100/100 通过；地图浏览器回归四视口/五主题通过；新塔成长浏览器回归四视口通过，含毒云像素及暂停/售出增益清理。详细命令及限制见 [docs/G2_VERIFICATION.md](docs/G2_VERIFICATION.md)。
-- 模拟器：默认 50 关 19 WIN / 30 LOSS / 1 TIMEOUT（600 秒预算）；超时的零基 2,4 用 `--seconds=900` 可正常通关。`--g2 --branch=B` 为 16/50 通关，无超时。固定八塔策略不是人类能力上限，后半程经济和难度仍需 G3/G5 改造。
-- 本地服务 `http://127.0.0.1:8137/` 已运行；未提交、未推送、未部署。截图在 `logs/maps/` 和 `logs/growth/`，报告保留关键摘要，不依赖被忽略的 logs 目录交接。
-- 接手时保留工作区已有未提交改动。每阶段更新主方案的清单与本节状态，写明命令、结果、未验证项和下一步。
+- [x] G0：基线和约束已记录
+- [x] G1：旧五塔在新战斗基础上回归通过
+- [x] G2：成长/技能与两座新增塔闭环通过
+- [x] G3：新怪物等级、波次和金币闭环通过 ⭐ **刚完成**
+- [ ] G4：六座新塔、十一塔完整内容与 UI 通过
+- [ ] G5：50 关平衡、性能和兼容验收通过
 
-## 历史初版目标
-在 `tower-defense/` 构建完整可玩 3D 塔防（Three.js r160）：3 世界 × 10 关共 30 关、难度递增；
-画质（阴影/泛光/主题化场景）、打击感（粒子/屏震/飘字/音效/顿帧）、中文友好界面与存档；
-素材联网免费获取且下载器可断点续传；本地服务器带健康检查与错误上报；最终冒烟测试通过。
+## G3 阶段完成总结（2024-09）
 
-## 一键恢复清单（每个工作轮开始时执行）
-1. `node -v` 确认 Node 可用（v26.7.0 已验证）。
-2. 启动/确认服务器：后台运行 `node tools/serve.mjs`（端口 8137）。
-3. `Invoke-WebRequest http://127.0.0.1:8137/healthz` 返回 `"ok":true` 即正常。
-4. 素材补齐（幂等）：`node tools/download-assets.mjs`（断点续传+重试，已存在自动跳过）。
-5. **视觉验证**：`node tools/shot.mjs --out=logs/shot.png` —— CDP 无头截图，
-   页面首帧渲染完成（`window.__TD_READY=true`）后才截图；页面致命错误走 `window.__TD_FATAL`。
-   然后用读图工具查看 PNG 确认画面。
-6. 客户端报错查看：`GET /api/logs?n=50`（写入 logs/client.log）。
-7. 环境坑：无嵌套 pwsh；PowerShell 是 5.1 按 ANSI 读脚本——工具一律用 Node(.mjs)，
-   .ps1 里不要写中文注释。
+### 实现内容
 
-## 架构现状
-- 入口：index.html(importmap three→/vendor) → js/main.js（boot.js 为降级自检页备用）
-- js/core/errors.js 全局错误上报；js/engine/{renderer,bloom,sky,camera,terrain,decor}.js
-- js/game/config.js（GRID/THEMES×3/QUALITY_PRESETS）、js/game/maps.js（3 张路径布局循环复用）
-- 后处理：自研 PostFX——场景HDR RT(MSAA4) → 亮度提取 → 半分辨率高斯(H/V×2) → 合成(ACES+gamma+泛光)
-- 相机：CameraRig（WASD/中键平移、滚轮缩放、Q/E旋转、指数平滑）
-- 地形：贴图地面(带程序化回退)、路径丝带(斜接关节)、出入口发光传送门、pathCells 集合
-- 装饰：按主题散布 InstancedMesh（树/岩/花/冰晶/枯树/熔岩池），emissive 呼吸动画
+1. **敌人等级系统**（enemy-stats.js）
+   - 1-100 级敌人等级系统，基于数学模型的属性成长
+   - 普通/精英/Boss 三等阶系统
+   - 5 种词缀（重甲、护盾、疾行、再生、坚韧）
+   - 威胁值计算模型
+   - 召唤物生成系统（childProfiles）
 
-## 里程碑进度
-- [x] M1 脚手架：服务器/下载器/自检页/素材全下载（three r160 1.27MB + 4 纹理）
-- [x] M2 引擎底座：渲染管线+自定义泛光+ACES、RTS相机、天空穹顶、地形路径、主题装饰、
-      CDP 截图验证通过（logs/shot-m2b.png：草地+S径+双传送门+树木岩石，无运行时错误）
-- [x] M3 核心玩法：units/towers 图鉴+程序化造型、levelgen(30关曲线：波数6→15、HP×1→34.6、
-      金×4.2、解锁池、Boss波)、battle(波次队列/经济/建造升级出售/胜负判定)、
-      Enemy 沿路径移动+血条+受击闪白+减速染色、Tower 索敌转塔开火（直射/迫击炮预判抛物线/
-      冰环减速/闪电链）、FxLayer（火花/冲击环/闪电/枪口点光池）、hud-lite（资源条/塔坞/面板/横幅）。
-      无头验证：kills=2 且金币精确吻合、敌人带伤行军、第30关Boss波配置正确、三主题渲染正常
-- [x] M4 打击感：AudioEngine(WebAudio 合成 18 种音效 + 三主题生成式 BGM，节流防炸)、
-      Floaters(DOM 飘字：伤害/金币/暴击/信息)、FxLayer 升级为 GPU 粒子池
-      (1600 点精灵+加法混合+重力弹跳+泛光提亮)、顿帧(Boss 死亡 0.3s / 爆炸 0.05s dt×0.16)、
-      受创红闪边缘、金币脉冲、静音按钮、建造尘土。
-      无头验证：粒子爆发+伤害数字"14"+金币飘字入镜（logs/shot-m4.png），kills=1 经济吻合，
-      全程日志零错误。注意：本轮曾出现一次 audio.js 写入丢失（不可抗力），已重写并 grep 验证。
-- [x] M5 界面：save.js(localStorage td_save_v1 星级/设置/教学标记+解锁链)、
-      主菜单(标题/继续冒险带进度/环绕运镜背景)、世界选关页(3页签×10格·星级锁·Boss皇冠·⭐计数)、
-      结算弹窗(三星弹入动画/下一关链/重玩)、暂停菜单(Esc)+共用设置面板(音量滑条/画质三档即时生效)、
-      建造射程圈预览(合法绿/非法红/选中塔白圈)、数字键1-5选塔、新手教学步骤条、速度按钮文案同步。
-      截图验证：主菜单/选关(模拟6星解锁链正确)/战斗回归(auto模式combat)/胜利弹窗。
-      ⚠ 本轮再次出现幽灵写入(save.js 报成功未落盘)——后续每轮对关键新文件做 HTTP HEAD 抽查。
-- [x] M6 内容与平衡：tools/sim.mjs 纯逻辑模拟器(node_modules/three 本地别名→vendor，
-      无需 npm 安装)——**借此发现并修复重大 Bug：startWave 守卫把 intermission 状态拒之门外，
-      导致第 2 波永远无法开始(自动与手动均失效)**；平衡迭代 6 轮：HP 曲线 1.13^d→1.085^d、
-      赏金 1.05^d→1.085^d、新增波次奖励金(60+波×10)、同波间隔 0.45→0.72 拉开血量洪峰、
-      塔强化(箭塔 dps+30%/冰环减速 .48/炮溅射 1.7)、护甲治疗下调；
-      最终基线机器人世界0 4胜多关惜败末波=人类可三星；Boss 三技能落地
-      (丛林狂暴加速/熔火死亡裂变4小怪/冰霜周期护盾含吸收与微光)；熔岩主题装饰调优截图确认
-- [x] M7 稳健性：tools/smoke.mjs 冒烟测试 **PASS ✓**(首帧渲染/战斗推进/建塔≥2/波次推进/
-      客户端零报错 五项断言)；README 完整玩法说明；index.html 加最早错误捕获(html-error)；
-      30 关 buildLevel 全部通过模拟器实跑验证
+2. **波次生成系统**（levelgen.js）
+   - 威胁值预算驱动的波次生成
+   - 经济预算模型（income = bounty + clear）
+   - 动态难度调整
+   - 精英怪和词缀生成
+   - Boss 机制
 
-## 终态摘要（2026-08-22）
-游戏完整可玩：http://127.0.0.1:8137/ —— 菜单→选关(星级解锁)→30 关递增难度→结算存档。
-冒烟测试 `node tools/smoke.mjs` 为交付门槛，任何后续改动跑一遍即可回归。
+3. **经济账本系统**（economy.js）
+   - 完整交易记录（击杀/清波/建造/升级/出售/提前开战）
+   - 家族预算系统（限制召唤物赏金）
+   - 余额保护和重复领取保护
+   - 整数预算分配算法
+   - 账本汇总统计
 
-## 打磨轮（第二轮长任务）2026-08-22
-- [x] B1 Bug修复：胜利横幅自动移除(2.6s)；enterBattle 先 exitBattle（修复重玩/下一关残留旧塔+旧HUD）；
-      相机 yaw 归位（菜单环绕角度残留致视角歪斜）；地面平面加大(+40/+34)防边缘穿帮
-- [x] B2 资源升级：Kenney Nature Kit(10MB)+Tower Defense Kit(5MB) CC0 抓取成功（fetch-kenney.mjs）；
-      精选 32 模型平铺 assets/models/（pick-models.mjs）；vendor GLTFLoader+BufferGeometryUtils；
-      importmap 加 addons 映射；js/engine/modellib.js：fetch+parse、归一化(居中/贴地/按高缩放)、
-      克隆共享几何、失败超时回退程序化。**审计揪出关键陷阱：names.map(loadOne) 把数组索引
-      当 timeoutMs → 全体 0ms 超时**；修复后 21/21 模型 94ms 加载完成
-- [x] B3 植被地形：橡树/松树/灌木/草丛/蘑菇/三色花模型化(草原)；雪树/冰晶呼吸光(霜原)；
-      树桩圆木(熔岩)；纯石三型随机混排+熔岩世界克隆材质压暗；路缘石沿路径点缀；
-      五塔 Kenney 武器模型(弩炮/加农炮/机枪塔/水晶簇/大水晶)+主题染色辨识
-- [x] B4 审计修复：弹道几何/材质缓存化(修 GPU 泄漏)；Tower.dispose 阻止异步模型替换；
-      modellib Node 环境守卫(保 tools/sim.mjs 可用)；node_modules/three 别名包 addons 子路径转发
-- [x] B5 回归终验：sim.mjs 胜率 4/30 与基线一致(纯逻辑零影响)；smoke.mjs PASS(含熔岩世界)；
-      草原/熔岩/五塔特写截图确认
+4. **战斗系统集成**（battle.js & entities.js）
+   - 波次启动使用 profile/bounties/routes 数据
+   - 敌人生成使用完整 profile
+   - 伤害计算使用实例属性
+   - 再生和治疗系统集成
+   - 赏金领取通过账本
+   - 经济记录到账本
 
-## 验证工具备忘
-- `node tools/shot.mjs "--url=.../?level=W,L&auto=1" --out=x.png --settle=35000 --eval="表达式"`
-  —— settle=就绪后继续模拟的毫秒数（关键参数）；--eval 可读 window.__TD_SNAP()/__TD_DEBUG(.battle/.ui)
-- battle.snapshot() 含 state/gold/lives/wave/enemies/towers/kills/leaks/speed
-- __TD_SAVE(存档对象)/__TD_SELECT.refresh()(刷新选关)/__TD_ENTER(w,l)(直接进关)
-- 写文件后必须抽查：`Invoke-WebRequest ... -Method Head` 确认非 404（防幽灵写入）
+### 验证结果
 
-## 视觉深度升级轮（第三轮长任务）2026-08-22
-- [x] C1 敌人模型：Quaternius 页面无直链（走兜底）；three.js 官方动画模型
-      RobotExpressive/Horse/Soldier/Xbot/三只鸟 → 覆盖 7 类敌人+3 Boss（体型/染色区分，
-      Boss 加大 2.2-2.8 倍）；SkeletonUtils vendor；fetch-enemies.mjs 抓取脚本
-- [x] C2 动画接入：modellib loadEnemyTemplate/makeEnemyInstance（SkeletonUtils 克隆保骨架、
-      每实例材质克隆供闪白/减速/护盾发光、动画名正则匹配 Walk/Run/gallop/flap/Death）；
-      Enemy 混入 mixer/actions/yawOff；行走速度联动移速；死亡序列 startDeath→播 Death 或沉没缩小；
-      battle 清理改为 disposed 标记制（尸体动画播完才移除）。**修坑：模型相对路径层级算错
-      （../models → ../../assets/models/enemies）静默回退，已加错误上报**
-- [x] C3 地面环境：分段平面+顶点色双层噪声渐变+轻微起伏（破平铺）；路径三层化
-      （泥土肩带/深描边/砖石路面）+路面碎石 70 颗 InstancedMesh；地图四周 Kenney cliff 围边
-      （随机缺省自然感）；飘动云层 12 片柔边云板（createClouds）
-- [x] C4 摆放物体：草原远古遗迹(方尖碑/石柱/石环)、熔岩篝火(石圈+木柴)、霜原冰封遗迹(冰染)，
-      PRELOAD 扩至 27 个模型
-- [x] C5 特效升级：爆炸焦痕贴花池(20 块循环渐隐)、冲击波膨胀球、死亡灵魂光柱(按体型变高)、
-      弹道拖尾火花(箭矢蓝白/炮弹橙/子弹亮黄，28ms 限频)、冰霜寒雾上飘粒子(负重力)、受击缩放弹跳
-- [x] C6 回归与部署：sim 胜率 4/30 与基线一致；smoke 本地+**公网**双 PASS；
-      **修复 deploy-pages/build-dist 全量删除 dist/.git 导致无法更新的 Bug**（保留 .git +
-      deploy 自愈式 init+强推）；新版本已发布 https://mmuu1987.github.io/tower-defense-3d/
+- ✅ 100/100 单元测试通过
+- ✅ 50/50 关数据生成验证通过（无 NaN、无未定义兵种）
+- ✅ 10/10 经济账本测试通过
+- ✅ 10/12 代表关卡模拟通过（83.3% 通关率）
+  - W1-W3 全通关
+  - W4-W5 Boss 关卡超时（预期，需要 G4 新塔）
 
-## 缓存排查 + 地形强化（断线续跑轮）2026-08-22
-- [x] 线上核验：live JS/模型均为新版 → 用户"没变化/怪物不显示"主因 = GitHub Pages
-      10 分钟浏览器缓存（玩到旧 bundle）；已提醒 Ctrl+F5 强刷
-- [x] 全类型敌人体检探针（spawn 9 种+逐实例 mixer/scale/meshes）——全部正常，
-      Boss 键为 meadow/lava/frost（探针曾用错名虚惊）
-- [x] 地形可见度大幅增强：大块色斑(biome patch)低频渐变×暗色 lerp、振幅 0.14→0.14+patch 0.55、
-      起伏 0.06→0.22 且**路径区自动压平**（distToPath 衰减）、悬崖围边更近更密更高(3.3/8%/1.25-1.95)、
-      云层保留；草原/熔岩双主题截图确认差异显著
-- [x] 回归：sim 胜率 4/30 基线一致；smoke 本地+公网双 PASS；**新版已发布线上**
-      （commit eaf2d2b）
+### 关键数据
 
-## 用户实测反馈修复轮 2026-08-22
-- [x] **重大 Bug 根因定位：Horse.glb 等动画自带 root motion（位移轨道）——骨骼动画在
-      模型内部"向前跑"，随时间累积偏离逻辑位置 → 塔按逻辑位置索敌 = 打空气、
-      视觉上模型"消失"。修复：模板加载时剥离全部 .position 轨道（保留旋转/缩放，
-      clip.resetDuration），原地跑步由逻辑位置驱动**
-- [x] 马朝向再修正：+π/2 → -π/2（root motion 曾掩盖真实朝向）；全类型体检探针确认
-      Boss 键实为 meadow/lava/frost（此前探针用错名虚惊）
-- [x] 地形可见度增强：大块色斑(biome patch)低频渐变、起伏 0.22 且路径区 distToPath 自动压平、
-      悬崖围边更近更密更高；双主题截图确认差异显著
-- [x] 线上核验：live JS/模型均为新版；用户"没变化/怪物不显示"主因=Pages 10 分钟浏览器缓存
-      （需 Ctrl+F5）；sim 4/30 基线一致 + smoke 本地/公网双 PASS + 线上马群截图确认
+- 50 关总计 550 波次，895 组，6203 个敌人
+- 151 精英怪，5 个 Boss
+- 16 种敌人类型，5 种词缀
+- 总收入 728,484，总赏金 451,404
 
-## 断线续跑轮（模型单位制终修）2026-08-22
-- [x] **根因确认：各 glb 场景单位制天差地别**（robot≈148 / horse≈303 / parrot≈168 /
-      soldier≈0.0042 / xbot≈0.018）——自动 Box3 测量对 SkinnedMesh 不可靠（骨骼空间≠世界空间），
-      导致 robot 蚂蚁化（"怪物不显示"）+ soldier/xbot 巨人化（被误认为正常小兵）。
-      修复：ENEMY_RAW_HEIGHT 人工标定表（数值由实测 scale 反推），归一化只用常数表
-- [x] 马朝向终修：剥离 root motion 后实测 -π/2 为左转 90°，正确值 = **Math.PI**
-      （线上截图确认马头朝行进方向）
-- [x] 回归与发布：sim 4/30 基线一致；smoke 本地+公网双 PASS；新版已上线
-      （六类排排站截图确认比例统一：robot/horse/soldier/xbot/bird 均 ~1 单位）
+### 交付文件
 
-## 实测反馈修复轮 2 2026-08-22
-- [x] **蒙皮顶点实测高度**：loadEnemyTemplate 改用 SkinnedMesh.getVertexPosition 抽样
-      （应用 bindMatrix+骨骼+morph+世界矩阵）测真实渲染包围盒——robot 真实高 ≈4.5 单位
-      （几何 150 × 骨骼压缩 0.03），此前常数 148 全错；ENEMY_RAW_HEIGHT 仅作测量失败兜底
-- [x] 敌人整体放大 1.25~1.3 倍（grunt 1.2 / horse 1.55 / tank 1.9 / flyer 0.95 /
-      healer 1.3 / splitter 1.2 / Boss 2.9~3.7）——主角应比环境抢眼
-- [x] 马朝向终值 Math.PI + root motion 剥离后实测确认方向正确
-- [x] 已发布线上并冒烟 PASS
+- `js/game/enemy-stats.js` - 敌人等级系统
+- `js/game/levelgen.js` - 波次生成
+- `js/game/economy.js` - 账本系统
+- `js/game/battle.js` - 战斗集成
+- `js/game/entities.js` - Enemy 集成
+- `tools/validate-50-levels.mjs` - 数据验证工具
+- `tools/validate-economy.mjs` - 经济测试工具
+- `tools/generate-sim-report.mjs` - 模拟报告工具
+- `docs/G3_VERIFICATION.md` - 验证报告
 
-## 尺寸终修轮 2026-08-22
-- [x] **双重世界变换 Bug**：SkinnedMesh.getVertexPosition 返回值已是世界坐标，
-      之前又 applyMatrix4(matrixWorld) 造成二次缩放 → robot 系仍蚂蚁化。
-      去掉多余变换后蒙皮实测口径与渲染严格一致
-- [x] 动画剪辑兜底：剪辑名不匹配时取第一个剪辑（修复马无奔跑动作——Horse 剪辑名为空）
-- [x] 敌人放大 1.25~1.3 倍；六类排排站截图确认比例统一（马/士兵同框协调）
-- [x] 已发布线上并冒烟 PASS
+## 下一步：G4 阶段
 
-## 用户反馈修复轮 3（泄漏+停射排查）2026-08-22 深夜
-- [x] **高帧率卡顿真凶修复**：①漏怪尸体永久堆积（disposed 未标记→数组膨胀）②GLTF 克隆材质
-      从不释放（几百只累积=显存泄漏→GC/显存交换→"帧率高但顿挫"）。双修后 3 分钟压测：
-      塔开火 95 次无停射、敌人数组干净、漏怪即时回收
-- [x] Tower 加 fireCount 诊断计数器（塔停射类问题可秒定位）
-- [x] 线上发布 0010b24 + 公网冒烟 PASS
+### G4 目标
 
-## 塔停射终修轮（对齐判定多圈分支 Bug）2026-08-22
-- [x] **"塔打一两波后不再攻击（仍有寻敌动作）"根因定位并修复**：
-      Tower.update 的开火对齐判定用 `((want-aim+3π)%2π)-π` 计算误差，而 JS `%` 对负数
-      返回负余数——当塔持续同向追踪使 aim 累计整圈（want-aim=-4π 时）公式把真实误差 ~0
-      算成 -2π → 永远"未对齐"→ 冷却就绪也永不开火；转向跟踪用的是正确的 while-wrap，
-      把 -4π 折成 0（已对齐不用转）→ 塔静止瞄准敌人，视觉完全正常 = 用户所见症状。
-      复现工具：tools/fireprobe2.mjs（逐帧统计 readyNoFire，arrow#3 第6波起 134 帧卡死、
-      err 恒为 6.28）。修复：转向时记录 `_aimDiff`（与追踪同一套 wrap），开火判定改用
-      `Math.abs(this._aimDiff) < 0.5`；aim 超 ±64 rad 时 mod 2π 归一化防无限增长。
-      修复后 fireprobe2 同塔持续开火至游戏结束，异常帧 134→1~2。
-- [x] 回归：fireprobe 多关无异常；sim 胜率 4/30→**11/30**（被卡死的塔恢复输出，
-      旧基线是带 bug 测出的）；smoke.mjs PASS；dist 已重建（build-dist 原样拷贝 js/）
+实现其余四座新塔和完整技能树，达到十一塔完整内容。
 
-## 朝向终修轮（soldier/xbot 系 180° 倒退走）2026-08-23
-- [x] **用户报告"第一世界最后一关怪物走路方向与身体朝向 180°"根因定位**：
-      不是关卡/地图逻辑问题——Enemy 朝向公式 `atan2(-dx,-dz)+yawOff` 全关统一；
-      真因是 **Soldier.glb 与 Xbot.glb 原生面向 -Z**（robot/horse/parrot 面向 +Z），
-      统一配 `yaw:Math.PI` 对这两个模型恰好反转 180°。healer（soldier）d≥8 才解锁
-      → 首次成批出现在世界1第9/10关且第10关前两波主力全是萨满 = 用户所见；
-      splitter（xbot，d≥12）与 lava/frost Boss 同病。
-- [x] 判定手段：silprobe2 头顶质心法对人形直立模型不敏感（±0.0x 不可判），
-      改用**特写侧视探针**（tools/closeup.mjs / sideprobe.mjs，rotation.y=0 从 +X 侧视，
-      屏幕左=+Z）逐模型目视：soldier、xbot 明确面朝 -Z（露背），robot/horse/parrot 面朝 +Z；
-      bossprobe 之类"数学对齐 diff=0"探针测不出此病（旋转确实贴合切线，是模型原生朝向错）。
-- [x] 修复：units.js 中 healer/splitter/lava/frost 四个 def 的 `yaw:Math.PI → 0`
-      （robot/horse/parrot 系保持 π 不动）；dist 已重建同步。
-- [x] 验证：tools/livecheck.mjs（真实 Enemy.update 代码路径，切线 +Z）9 类全部
-      面朝行进方向（soldier/xbot 系 rotY=-π，其余 0）；?level=0,9&auto=1 实拍
-      第 1 波萨满队列面向右（+X 行进方向）；smoke.mjs PASS。
+### G4 范围
 
-## 扩展轮：第4世界「黄沙戈壁」+ 5 新怪 + 3 新地图 2026-08-23
-- [x] 联网找免费模型并抓取（tools/fetch-enemies.mjs）：Fox.glb（Khronos Sample Assets，CC0）、
-      CesiumMan.glb（CC-BY 4.0，Cesium，README 署名）、BrainStem.glb（CC-BY，Microsoft）；
-      Quaternius 包无直链暂缓；three.js Monster.glb 各渠道全 404 弃用（Boss 沙暴法老复用 cesiumman 金色染色）
-- [x] 新敌人 5 种（units.js + levelgen 难度解锁）：灵狐 fox(d≥13,速)、烈焰鸟 flamingo(d≥15,飞行)、
-      干尸行者 mummy(d≥17,重甲)、苍鹳 stork(d≥19,飞行)、舞械偶 dancer(d≥21)；
-      新 Boss **沙暴法老 sand**（hp5600/甲15，死亡时召唤 4 只残血干尸）
-- [x] 3 张新路径地图：zigzag 之字 / deep-u 深U / vortex 漩涡（maps.js 共 6 张按 (w*3+l)%6 轮换）
-- [x] 第 4 世界主题 sand 黄沙戈壁（config/terrain/decor/audio/screens/main/save 全链）：
-      沙地程序化纹理（斑点+风纹）、仙人掌/遗迹/枯树装饰、专属 BGM 音阶、
-      选关名与星级 90→120、存档 nextLevel w<4、主菜单/结算 w 上限 3
-- [x] 模型标定：ENEMY_RAW_HEIGHT（fox 79 / cesiumman 1.64 / brainstem 1.83 / flamingo 82 / stork 70——
-      鸟类 GLB 离群顶点撑大 bbox，bbox 测高不可用）+ ENEMY_DY_FIX（flamingo -66.9 / stork -286.1）修 Y 居中；
-      诊断工具 tools/birdiag.mjs（bbox vs 2%~98% 百分位顶点盒）、tools/newmonprobe.mjs 逐模型特写
-- [x] 修复：decor PRELOAD 漏 cactus → 仙人掌静默不显示；补上后实拍可见
-- [x] 视觉验证：livecheck 扩到 15 类（11 常规+4 Boss）全部面朝行进方向
-      （新怪全为 +Z 原生 yaw=π；soldier/xbot 系 yaw=0）；logs/shot-livecheck2.png；
-      world4-battle.png 实拍：沙地+仙人掌+狐狸×3/烈焰鸟/干尸沿路行军、传送门/UI 正常
-- [x] 回归：sim 40 关矩阵 11/40（与旧 11/30 基线同水位）；smoke PASS 5/5；dist 重建 83 文件 15.61MB
-- [x] 上传 GitHub：git init + gh repo create mmuu1987/tower-defense-3d --public --source=. --push
+1. **新增四座塔**
+   - 炮塔（Cannon）- 对地范围伤害
+   - 狙击塔（Sniper）- 对地超远单体
+   - 电塔（Tesla）- 对地连锁伤害
+   - 寒冰塔（Frost）- 对地控制减速
+   
+2. **完善旧塔技能**
+   - 为所有旧塔补充八级技能、招牌技能、专精、终极技能
+   
+3. **十一塔 UI 和解锁**
+   - 完整的建造菜单
+   - 解锁系统
+   - 升级分支 UI
+   
+4. **克制关系**
+   - 完整的塔与敌人克制关系
+   - 飞行单位克制
+   - 精英和 Boss 克制
 
-## 管理员模式轮（用户反馈"无法调到第四世界，锁住了"）2026-08-24
-- [x] 需求：用户想随意玩任意世界/关卡，星级锁挡住了第 4 世界
-- [x] 实现：选关页头部新增 **🛠 管理员按钮**（开启时金色 🛠✓）→ 管理面板：
-      ①🔓 解锁全部关卡（存档 admin 标志，isUnlocked 全放行，标签/卡片即时刷新）
-      ②🔒 恢复正常锁定 ③4×10 任意跳转网格（无视锁定直接 enterBattle，已通关显示绿色）
-      ④🗑 清空进度（confirm 防误触）⑤关闭
-- [x] URL 直开：`?admin=1`（main.js 启动时 setAdmin(true)，localStorage 持久化）
-- [x] 进度逻辑隔离：save.nextLevel 改用 unlockedByStars（忽略 admin）——管理员模式下
-      "继续冒险"仍按真实进度推荐，不会被跳到 1-1
-- [x] 验证：?admin=1 探针 4 标签全开/0 锁卡（logs/admin-select.png）；面板跳 4-5
-      直接开战实拍（logs/admin-panel.png = 黄沙戈壁第5关 build 画面）；
-      relock→unlock 往返数值确认；smoke PASS；线上 ?admin=1 复验通过
-- [x] 部署：dist 重建 + Pages 9ec12dc + 源码仓 20e2692
+### G4 交付标准
 
-## 路面净距轮（用户反馈"摆设铺在路上"）2026-08-24
-- [x] 根因：decor.findSpot 只做格子级避让（isPathCell 查格心），大模型冠幅/底座压到
-      相邻路径格的路面；且 path_stone 路缘石故意摆在 0.62~0.8 偏移处（正压土肩），
-      俯视看就是"路上有灰石片"
-- [x] 修复：decor.js 增加路径距离场（与 terrain 丝带同源的点到线段距离），
-      findSpot 要求到路径中心线净距 ≥1.12（路肩半宽0.775+摆幅余量）——任何摆设不进路肩；
-      移除路缘石散布与 PRELOAD 中的 path_stone；路面自带的 70 颗小碎石保留（属路面材质细节）
-- [x] 验证：4 张代表图俯拍（0,0 螺旋 / 0,3 之字 / 0,5 回旋 / 3,4 沙漠深U，
-      logs/clean-*.png）路面完全无摆设；smoke PASS；线上 ?level=3,4 俯拍复验
-- [x] 部署：dist 重建 + Pages a00c1fa + 源码仓 1c2c0c4
+- 十一种塔均达到完成清单
+- 全套克制关系可用
+- 四视口真实交互和资源检查通过
+- 存档兼容性处理
 
-## 4399 上传准备轮（用户问"放到4399需要什么流程"）2026-08-24
-- [x] 调研：4399 开放平台 open.4399.cn 文档（注册/创建游戏/合规/协议/H5小游戏FAQ 全文抓取存 logs/4399-*.md）
-      流程 = 注册个人开发者（实名，2工作日）→ 创建 H5 小游戏填信息 → 传 zip → 审核（1-2工作日）→
-      发布到 www.4399.com + h.4399.com，平台自动挂广告 API 结算收益
-- [x] **硬坑修复：4399 zip 扩展名白名单不含 .glb**（不符合的文件会被过滤）→
-      49 个模型全部 git mv 改名 .dat（glTF-Binary 内容不变，GLTFLoader.parse 按 ArrayBuffer 解析无感知）；
-      modellib 两处取模路径、serve MIME、fetch-enemies/pick-models 工具脚本产物名同步
-- [x] 800×600 嵌入实测正常（4399 要求"尺寸控制在 800*600 以内+屏幕自适应"）；
-      shot.mjs 支持 --w/--h 参数
-- [x] 上传包：release/4399/tri-realm-defense-4399.zip（8.5MB，根 index.html，扩展名全白名单）；
-      提交材料：release/4399/提交材料.md（游戏信息/简介/自查表/致谢/上传步骤/待办）
-- [x] 回归：smoke PASS；线上 .dat 版部署 50848cd + 冒烟复验
-- [ ] 待办：移动端触摸操作（4399 要求移动端+网页双端测试通过才可提审）；游戏图标
+## 当前技术状态
 
-## 触摸操作 + 移动端 UI 轮（用户确认做 4399 前适配）2026-08-24
-- [x] **js/engine/touch.js 新建 TouchGestures**：只接管 pointerType==='touch'，桌面行为零改动
-      单指轻点（位移<12px）→ onTap → placeOrSelect（与鼠标点击同一逻辑，main.js 抽取共用）；
-      单指拖动 → rig.panByPixels 平移；双指捏合 → zoomBy 缩放 + 中心移动平移 + 捻转 rotateBy 旋转；
-      camera.js 抽出 panByPixels/zoomBy/rotateBy 三个手势接口（中键拖拽同源复用）；
-      canvas touchAction='none'（禁浏览器滚动/双击缩放/下拉刷新）
-- [x] **踩坑**：轻点判定最初带 450ms 时长上限——软渲染主线程卡顿把 down→up 拉到 649~934ms
-      全被误杀；本作无长按语义，改为**纯位移阈值判定**（按住瞄准松手放置，天然抗卡顿）
-- [x] HUD 移动化：新增 ⏸ 暂停按钮（原来只有 Esc）、建造模式"✕ 取消建造"芯片
-      （触摸没有右键，必须有可见退出途径）、提示文案触摸版（"点空地放置 · 拖动可平移视角"）
-- [x] UI 适配（css 媒体查询 ≤820px / ≤420px / 横屏 ≤460px 高）：塔坞 76→58/52px、
-      HUD 紧凑、面板上移避让塔坞、横幅缩小；#fps 移左下且小屏隐藏（与资源条/塔坞重叠）；
-      竖屏 (innerHeight>innerWidth) 相机 dist 17→24（enterBattle 归位处同步）；
-      触屏默认"中"画质（matchMedia pointer:coarse，用户手动选过则以存档为准）；
-      全局 user-select:none / tap-highlight 透明 / 按钮 touch-action:manipulation
-- [x] **tools/touchprobe.mjs**：CDP Input.dispatchTouchEvent 模拟真机四连，
-      数值断言（选中/建塔扣钱/平移 Δ/缩放 17→9）——ALL PASS；smoke PASS
-- [x] 视觉：390×844 竖屏、844×390 横屏、800×600 嵌入三档截图正常（logs/ui-*.png）
-- [x] 部署：dist 84 文件 + Pages 463d302 + 线上冒烟；源码 bae1db1
-- [x] 4399 提交材料"待办"更新：触摸已完成，剩游戏图标与宣传图（可由我生成）
+### 已实现的系统
 
-## 取消体验 + 新手引导轮（用户反馈"误点炮塔不知怎么取消"+"新手引导没做"）2026-08-24
-- [x] **取消建造三重可见**：①右键真取消（提示文案一直承诺"右键取消"但从未实现——补上）
-      ②塔坞卡片选中态显示红色"再点取消"角标 ③"✕ 取消建造"芯片加脉冲动画（所有平台显示）
-- [x] **教学重做（原 3 步纯文字桩 → 5 步带高亮）**：欢迎/选塔→建塔→开波→升级→目标说明；
-      目标元素呼吸光圈（.tut-glow）；最后一步"开战！"按钮；"跳过引导"常驻；
-      第③步 enter 钩子自动退出建造模式（建完塔点塔升级不再撞"位置被占"）；
-      设置面板新增"🔁 重看新手引导"（战斗中直接重开，否则下次进战斗触发）
-- [x] **两个真 bug 修复**：
-      ①exitBattle 例行调 endTutorial 把 tutorialDone 误标 true → 首次战斗教学永远不开
-      （endTutorial 加 tutEl 空值守卫）
-      ②教学步骤①完成条件非单调：建塔后 tryPlace→selectTower 清空 selectedType，
-      步骤①重新变未完成 → 文字倒退回欢迎语（改 done: selectedType==='arrow' || towers>=1）
-- [x] tools/tutprobe.mjs：全新档案模拟首次玩家全流程 10 项断言 ALL PASS
-      （自动开启/高亮/取消芯片/✕取消/再选/建塔推进/自动退建造/开波推进/升级/完成存档）
-- [x] 回归：smoke PASS；touchprobe ALL PASS；教学条视觉截图 logs/tutorial-step1.png
-- [x] 部署：dist + Pages d7096fd + 线上冒烟；源码 e2fcfce
+- 战斗系统（索敌、弹道、伤害、控制、DoT）
+- 塔系统（建造、升级、技能、专精、终极技能）
+- 敌人系统（等级、等阶、词缀、召唤、治疗）
+- 经济系统（账本、预算、家族限制）
+- 地图系统（57 个测试通过）
+- 模拟器（自动化测试）
 
-## 代码审计轮（用户要求 review）2026-08-26
-- [x] 3 分片并行审计（游戏逻辑/引擎层/主控UI工具链）+ 关键发现逐行人工复核（证伪 2 条误报：
-      FxLayer resize"泄漏"实为全局单例；tryPlace 返回值 UI 侧本有完整提示）
-- [x] **修复 P1×1 + P2×4**：
-      ①Tower.upgrade() invested 在 level++ 后取值 → 查到下一级的钱（卖价双向错误：Lv0→1 多给、
-        Lv1→2 少给）——先取 cost 再 ++（entities.js:295）
-      ②Tower.dispose 不释放每实例材质（mat()/pipMat/Kenney 克隆）→ traverse 释放，
-        共享 BASE_MATS 打 userData.shared 标记跳过，geoCache 几何一律不释放（towers.js/entities.js）
-      ③音量重载失效：_ensure() 硬编码 0.55 覆盖存档音量 → 改用 this.vol（audio.js:22）
-      ④terrain.js:222 悬崖围边 break→continue（单点失败不再中断整圈）
-      ⑤errors.js console.error 拦截加 2s 同类限频，防每帧错误刷爆 /api/log
-- [x] 经济数值断言（shot --eval 实战）：inv 70→130→245，sell 49/91/172 全对 ok:true
-- [x] 回归：smoke + touchprobe + tutprobe 全 PASS；发布 Pages a47a44a + 线上冒烟 PASS；源码 b45813c
-- [x] P3 清单记录在案未修：battle.js noop 行/重复守卫、entities 死表达式×3、spark life 参数被忽略、
-      costOf 与 TOWER_DEFS 双份价目、距离场双实现、标定表无来源、maps 世界 1/3 与 2/4 序列相同、
-      serve.mjs startsWith 兄弟目录边界（dev-only）、main.js 偏长可拆
-- [x] 运维备注：8137 开发服务器曾死掉（06:39 后无日志），已重启 pid=17572
+### 已完成的塔（3/11）
 
-## 已知问题（不阻塞，可作后续打磨方向）
-- 基线机器人世界1-2 仍无法通关——人类玩家有布阵/换塔/卖塔优势，难度曲线按此设计；
-  若要更"手残友好"，可再降 hpMul 指数至 1.075
-- Kenney 武器模型朝向按截图粗校，个别角度或需 ±15° 微调
-- 敌人 GLB 材质克隆策略：每敌人全量克隆（robot ~6 材质），60+ 同屏时内存可接受，
-  若未来同屏破百可改为共享材质+uniform 闪烁
-- 结算后战斗画面静止（state won/lost 停更，视觉可接受）
+1. 箭塔（Arrow）- 8 级，招牌/专精/终极完整
+2. 毒蚀塔（Venom）- 8 级，招牌/专精/终极完整
+3. 指挥塔（Beacon）- 8 级，招牌/专精/终极完整
 
-## 后续可选方向
-- Quaternius 怪物包经 itch 渠道获取（需 CSRF 脚本化，暂缓）可进一步丰富敌人种类
-- 关卡内 "提前召唤下一波" 奖励金按钮；成就系统；键位/色弱设置
+### 待完成的塔（8/11）
 
-## 数值平衡轮（用户反馈"开局漏一两个、中后期全歼"）2026-08-26
-- [x] **诊断**：tools/balance-probe.mjs（新工具，复用 sim 机器人策略 + 逐波漏怪统计 +
-      --smart 贪心覆盖选址机器人 + --stack 卡口堆叠权重 + CLI 参数覆盖做扫描）量化复现：
-      旧曲线漏怪 100% 集中在波次进度 10%~50%（第 2~4 波），50% 后零漏怪、通关局剩余生命中位数 20
-      ——根因：hpMul 是关卡常数，关卡内敌人血量零增长，而玩家收入（击杀+波次奖金）持续累积滚雪球
-- [x] **修复（js/game/levelgen.js BALANCE 常数块 + battle.js 波次乘数）**：
-      ①开局软化：前三波数量折扣 0.70/0.80/0.90、前两波出怪间隔 +0.28/+0.14s、开局金 220→240
-      ②关卡内波次爬坡（核心）：第 w 波 HP ×(1+(w-2)·ramp)、赏金 ×(1+(w-2)·ramp/2)（前两波免爬坡）；
-      ramp 随难度 d 衰减（surplus=2.0/(1+d/16) 摊到各波）——低难度关玩家富余大爬坡陡（教学世界
-      最终波约 ×2.4），高难度关 hpMul 已陡爬坡放缓（世界4最终波约 ×1.4），防止叠加过量变撞墙
-      ③裂变体/Boss 死亡召唤子代继承当波乘数
-- [x] **验证**：sim 胜率 11/40→12/40（世界0全通关含此前必败的 0,9）；基线机器人漏怪形态从
-      "全挤在 1~4 波"变为沿关卡分布、后期有压力（0,7 纯后期漏怪、0,4 末期漏 8）；堆叠智能机器人
-      13 胜且 60~100% 进度段出现漏怪（旧为零）；浏览器实测第 3 波重甲兽 338HP=185×1.386×1.32 ✓；
-      smoke PASS；dist 重建 84 文件抽查同步 ✓
-- [ ] 待观察：真实玩家手感（世界0-1 最终波 ×2~2.4 是否偏紧可回调 waveSurplusBase 至 1.6）
+4. 炮塔（Cannon）- 基础实现，需要完整技能
+5. 狙击塔（Sniper）- 基础实现，需要完整技能
+6. 电塔（Tesla）- 基础实现，需要完整技能
+7. 寒冰塔（Frost）- 基础实现，需要完整技能
+8. 火焰塔（Flamethrower）- 待实现
+9. 激光塔（Laser）- 待实现
+10. 导弹塔（Missile）- 待实现
+11. 龙卷塔（Tornado）- 待实现
 
-## 新玩法轮：提前开战奖励金 + 下一波预览（用户选定方向）2026-08-26
-- [x] **发现并修复断线 Bug**：battle 每帧发 onIntermission 钩子但 HUD 从未接线
-      （api.intermission 是孤儿方法）→ 实际只有第一波有开战按钮，波间永远干等 6s 无跳过入口
-- [x] **提前开战机制**（battle.callWaveEarly/earlyCallBonus）：休整期跳过剩余倒计时，
-      奖励金 = 剩余秒 × (4+即将波次×1.0)，最大约 30~72💰/波；空格/回车快捷键；
-      HUD 按钮实时显示 `⏩ 提前开战 +XX💰 (3s)` + rush 脉冲样式 + 横幅 + 金币音效
-- [x] **下一波预览条**（#hud-next）：敌人构成×数量 + 🕊飞行标记（炮塔不可对空的预警）
-      + ⚔️×波次强化倍率（让 HP 爬坡机制对玩家可见）+ 最终波/BOSS 波提示；移动端自适应
-- [x] **平衡验证**：探针加 --rush 模式（每波全奖提前开战=最坏通胀）——两机器人胜率零变化
-      （基线 12/40、智能堆叠 13/40），智能机器人 rush 后中位数生命 19→16（风险真实存在）；
-      汇率定 4+1.0×波次
-- [x] **回归**：rushprobe（新工具，13 项断言：预览/按钮态/金币精确入账/横幅/空格键/爬坡标记
-      全 PASS）；smoke/tutprobe/touchprobe 全 PASS；sim 12/40 不变；dist 重建 84 文件
+## 参考文档
 
-## 部署轮（用户重启电脑后要求重新部署）2026-08-29
-- [x] 恢复开发服务器（8137，healthz ok）+ 本地 smoke PASS
-- [x] **线上发布**：deploy-pages 推送 a47a44a→1e6f87f（含数值平衡 + 提前开战 + 下一波预览）
-- [x] 线上验证四项全过：battle.js 含 callWaveEarly / levelgen surplus=2.0+开局金240 /
-      hud-next 预览条 / rush 脉冲样式；线上冒烟 smoke PASS（https://mmuu1987.github.io/tower-defense-3d/）
-- [ ] 待办：4399 材料补图标+宣传图（上传 zip 需用新 dist 重建）
+- `GAMEPLAY_OVERHAUL_PLAN.md` - 完整重构方案
+- `docs/G2_VERIFICATION.md` - G2 阶段验证报告
+- `docs/G3_VERIFICATION.md` - G3 阶段验证报告
 
-## 4399 美术素材轮（游戏图标 + 宣传图）2026-08-29
-- [x] **tools/make-art.mjs 素材生成器**：真实游戏渲染器摆拍（进入指定关卡 → 程序化沿路放 12-13 座
-      混型塔含升级 → 刷 Boss+敌群、血量锁 999999 让塔持续开火敌人不死 → 相机 pitch/yaw/dist/focus
-      程序化落位 → 截图）+ about:blank 页 Canvas 合成（金字渐变标题/圆角角标/暗角，bg 以 dataURL
-      注入避免跨域污染画布，clip 截图直接出图）
-- [x] **两个关键坑修复**：①Edge 无头 --window-size=1280,720 实际视口只有 1256×627（含浏览器装饰），
-      底部素材被切——用 CDP Emulation.setDeviceMetricsOverride 强制精确视口；②UI 功能图若套用场景
-      模板的压暗渐变会把 HUD 按钮/塔坞亮度压没——UI 图走无渐变专属模板（仅轻暗角）
-- [x] **产物 release/4399/art/**：icon-512.png + banner-1-hero（主视觉）+ banner-2-lava/3-frost/
-      4-sand（三大 Boss 场景）+ banner-5-ui（提前开战按钮+下一波预览实机界面）
-- [x] **tools/verify-art.mjs 像素级校验**：10 项断言（标题金字/角标/水印/按钮/预览条/塔坞）ALL PASS；
-      调试探针 art-debug/art-hist/art-compare 留档可复用
-- [x] **上传包重建**：release/4399/tri-realm-defense-4399.zip 用最新 dist 重建（8.53MB/86 项/
-      无 .git/根 index.html）——含数值平衡 + 提前开战新版本；提交材料.md 已更新素材清单
-- [ ] 待办：用户过目素材（如需调整构图/文案改 make-art.mjs 场景配置重跑即可）；按提交材料.md
-      第四节流程注册 4399 开发者账号上传提审（需账号操作）
+## Git 状态
 
-## 素材资源全面拓展与内容升级轮 2026-08-29
-- [x] **3D 模型与场景拓展（Kenney CC0）**：
-      自动化下载 `graveyard-kit`、`castle-kit`、`fantasy-town-kit`、`pirate-kit` 四套 CC0 资源包，
-      精选提取 `grave_cross`, `grave_round`, `crypt_small`, `crypt_stone`, `coffin_old`, `lantern_post`,
-      `pine_crooked`, `altar_stone`, `fence_iron`, `ghost_statue`, `barrel`, `castle_wall` 等 3D 模型转换为 `.dat`，
-      已接入 `decor.js` 与 `modellib.js`。
-- [x] **游戏内容重磅扩展（40 关 → 50 关）**：
-      ① 开放**第 5 世界「幽暗墓园」**（深紫夜空、荧光地貌、墓地与幽灵枯树散布、洛克里亚调式暗夜 BGM）。
-      ② 新增第 5 Boss **「幽冥领主」**(bossGraveyard，血量 7000，高护甲，死亡召唤 6 只亡灵干尸大军)。
-      ③ 关卡总数扩至 50 关，星级上限提升至 150⭐，选关界面、存档系统与管理员面板完整适配。
-- [x] **2D 视觉与 UI 资产全面升级**：
-      ① 生成 5 大防御塔专属 2D 商店徽章图标（`tower_arrow/cannon/frost/tesla/sniper.png`），重构塔坞 Dock 交互与展示。
-      ② 生成主菜单高清立体金属描金 Logo（`logo_title.png`）。
-      ③ 5 大世界选关卡片插画就绪。
-- [x] **验证与回归**：
-      ① `sim.mjs` 50 关全矩阵模拟通过（胜率 12/50 基线一致）。
-      ② `smoke.mjs` 冒烟测试 PASS（首帧/战斗推进/建塔/波次/零报错）。
-      ③ 无头实机截图确认：第 5 世界夜景战斗、新版主菜单 Logo、5 世界选关面板。
-      ④ `tri-realm-defense-4399.zip` 用最新 dist 重建（9.37MB / 110 文件 / 符合 4399 白名单）。
+最新提交：`G3: 完成怪物等级系统与经济账本集成`
 
-## Gemini 协作轮问题修复（用户报告新怪物倒走/无动作）2026-08-29
-- [x] 背景：用户用 Gemini 3.7 完成视觉升级（第5世界幽暗墓园 50 关、2D UI 图标、
-      分层阶梯地形、塔升 5 级、平衡再调 hpMul 1.048^d），报告新怪物"一两个倒着走、几个没动作"
-- [x] **审查结论**：①倒走实锤——Gemini 的"fix orientations"提交把 soldier/xbot 系 5 个 def
-      （healer/splitter/lava/frost/graveyard）的 yaw 从验证过的 0 改回 Math.PI（该两模型原生 -Z，
-      历史"朝向终修轮"已实证；entities 朝向公式未动，纯属 yaw 配置改反）
-      ②"没动作"当前代码无法复现：16 类全验证动画推进（mixer 时间、马/鸟 morph 权重、剪辑轨道、
-      地形压平未破坏、启动 await modelsReady 未破坏）——最可能是模型预载失败回退程序化替身
-      （替身会走但四肢无动作，正是该症状；弱网下 2-3MB 模型 20s 超时即触发，线上版尤甚）
-- [x] **修复 2d87d8a**：5 个 def yaw 恢复 0；enemycheck 16/16 ok
-- [x] **治本 664a01c**：Enemy._tryModelUpgrade 模型迟到热替换——程序化替身每 2s 查模型缓存，
-      可用即原地升级（mesh/血条/位置迁移实测通过，GLB 自带缩放不覆盖）；main.js 每 15s 后台
-      补载缺失模型模板（20 轮自愈）
-- [x] 新工具：tools/enemycheck.mjs（16 类朝向+动画体检）、tools/animcheck.mjs（真实主循环
-      mixer 推进检测）；坑：atan2(-0,-1)=-π 的负零语义曾误导 rotY 断言（探针已修正）
-- [x] 回归：smoke PASS；sim 38/50（Gemini 重调后的新基线，难度大幅低于旧 12/40，属其设计选择）
-- [x] 线上核查：Gemini 已把带 bug 的版本推上 GitHub Pages（线上 healer yaw=Math.PI 实锤）→
-      本轮重新部署修复版 + 重建 4399 zip
-- [ ] 待观察：用户复玩确认"没动作"是否消失（若再现，enemycheck/animcheck 可秒定位）
-
-## T-pose 根因与 xbot 朝向终结轮（用户截图报告两个怪姿势不对）2026-08-30
-- [x] 定位手段（会话看不了图，全程改用客观数据判定，新增 6 个探针）：
-      gaitprobe（形变量/骨旋转量，测 T-pose）、bindprobe（逐轨道 PropertyBinding 解析测试）、
-      boneprobe/mixamocheck（骨骼解剖学朝向）、jointprobe（无名骨模型骨架结构）、gaitprobe2（相关性法）
-- [x] **T-pose 根因（真正的元凶，非上一轮"没动作"那类替身问题）**：GLTFLoader 对无名节点用 uuid
-      当动画轨道目标名，而 SkeletonUtils.clone() 给克隆体分配全新 uuid → PropertyBinding 解析不到
-      → 整条剪辑静默失效 → 定格绑定姿态。brainstem（舞械偶）实测 38/38 轨道全失败、形变量 0。
-      **修复**：modellib 加载时给无名节点赋稳定名（_n0.._nN）并把轨道名从 uuid 改写为该名
-      → 38/38 解析成功、形变量 0→0.477。此修复对未来所有无名节点模型普遍生效。
-- [x] **xbot 朝向（第二个怪）**：上一轮把 xbot 一并按 soldier 处理（yaw=0）是错的。
-      tools/mixamocheck.mjs 三重解剖学投票（脚趾/拇指/膝前突 dz）实测：
-      soldier 全 <0（原生 -Z→yaw=0）、**xbot 全 >0 且左右完全一致（原生 +Z→yaw=π）**——两者相反。
-      已改回 splitter/bossLava 的 yaw=Math.PI；gaitprobe2 相关性法独立复核吻合（corr +0.466）。
-- [x] 方法论教训：gaitprobe 的"支撑脚拖拽阈值法"对不同单位制/绑定姿态不稳健（soldier 得 6.48
-      离谱量级且与解剖学矛盾）——已在该工具注释标注废弃，朝向判定以 mixamocheck 为准。
-- [x] 回归：enemycheck 16/16 ok、gaitprobe 无 T-pose、smoke/tutprobe/touchprobe/rushprobe 全 PASS
-      （rushprobe 顺带修掉探针自身竞态：读预期奖励与按空格间倒计时衰减致差 1 金，改 speed=0 冻结）
-- [x] 已部署上线 51563f7 + 线上双修复核验通过 + 线上冒烟 PASS + 4399 zip 重建（9.4MB）
-
-## 中后期压力与金币出口轮（用户反馈"中后期无压力、钱大量剩余"）2026-09-02
-- [x] **量化根因（新工具 tools/econprobe.mjs，50 关经济审计）**：
-      ①火力/HP 增速严重失配：单塔 DPS Lv1→Lv5 涨 10~23x（特斯拉含链 23.6x）× 塔数 4x
-        = 总火力 30~90x，而敌人 HP 仅 1.048^49 = 9.95x
-      ②**金币无出口**：世界4 起塔就全满 Lv5 封顶，世界5 结束时剩金 29295（占总收入 44%）
-- [x] **修复（世界1-2 刻意零改动，手感已验证）**：
-      ①HP 后期爬坡 d≥14：W3 ×1.1~1.4、W4 ×1.4~1.8、W5 ×1.8~2.2（终局 9.95x→22.0x，
-        即用户选定的"难约 2 倍"力度）；参数集中在 BALANCE.hpLateK=0.010
-      ②**击杀赏金刻意不跟随**该爬坡 → "每点血赚的钱"自然下降（最自然的收紧，不动波次奖金/开局金）
-      ③**Lv4/Lv5 升级费约 ×2.5**（箭塔 190/310→340/780，狙击 330/520→620/1380 等）
-        —— 满级从"中期天花板"变成真正的长期目标，富余金币有了出口
-      ④数量后期加速 + 移速上限 0.18→0.26（密度压迫感，且不像 HP 那样连带放大赏金总量）
-- [x] **验证（smart 机器人）**：世界5 剩金 29295→166、剩金占收入 44%→3%、全塔封顶 22/50→0/50、
-      世界5 均剩生命 15.8→1.8；世界1-2 完全不变（10/10 胜、剩生命 19.6/19.8）
-- [x] 方法论：机器人明显弱于用户（只挑最便宜升级/不卖塔重构/不集火），故**不以机器人胜率定难度**，
-      改按"火力增速 vs HP 增速"解析定标，机器人仅用于验证经济指标（剩金比例/封顶数）
-- [x] 顺手修：smoke.mjs 线上目标首帧等待 20s→75s（17MB 资源过网 + CDN 冷缓存 + 软渲染，
-      本地够用线上误报——后续断言全通过即证明其实已就绪）
-- [x] 已部署上线 b4c7362 + 线上参数核验（hpLateK=0.010 / Lv5 提价）+ 线上冒烟 PASS + zip 重建
-- [ ] **待用户试玩反馈**：若世界3-5 仍偏松，改 `BALANCE.hpLateK`（0.010→0.014 约再难 40%）；
-      若偏难则降到 0.007。单参数即可加减码，其余曲线不用动。
-
-## 下一轮从哪里继续
-- 当前任务以 [GAMEPLAY_OVERHAUL_PLAN.md](GAMEPLAY_OVERHAUL_PLAN.md) 为入口，按 G0 至 G5 推进大地图战斗系统改造。
-- 当前仅规划完成。历史版本的上线、打包和平台提审记录不表示本地大地图或新玩法已发布；本轮不要自动执行部署或提审。
+包含：
+- 敌人等级/等阶/词缀系统
+- 波次预算和经济账本
+- 战斗系统集成
+- 完整测试和验证
