@@ -84,6 +84,7 @@ export class Enemy {
       // 治疗
       this.healRadius = profile.heal ? profile.heal.radius : 0;
       this.healHps = profile.heal ? profile.heal.hps : 0;
+      this.reward = ticket?.bounty ?? 0;
     } else {
       // 旧路径：使用倍率
       this.maxHp = Math.round(def.hp * hpMul);
@@ -102,7 +103,9 @@ export class Enemy {
       this.shieldT = def.shield ? def.shield.cd : 0;
       this.healRadius = def.heal ? def.heal.radius : 0;
       this.healHps = def.heal ? def.heal.hps : 0;
+      this.reward = Math.max(0, Math.round((def.reward || 0) * rewardMul));
     }
+    this.shieldCooldown = profile?.shield?.cd ?? def.shield?.cd ?? 0;
     this.dist = def.fly ? sampler.total * 0 : 0;
     this.alive = true;
     this.dying = false;      // 死亡动画播放中（不可索敌/不再移动）
@@ -220,8 +223,13 @@ export class Enemy {
   }
 
   applySlow(pct, dur) {
-    if (pct >= this.slowPct - 0.01 || this.slowT <= 0) { this.slowPct = pct; }
-    this.slowT = Math.max(this.slowT, dur);
+    if (![pct, dur].every(Number.isFinite) || pct <= 0 || dur <= 0) return false;
+    const resistance = THREE.MathUtils.clamp(this.controlResistance || 0, 0, 0.95);
+    const effectivePct = THREE.MathUtils.clamp(pct, 0, 0.95);
+    const effectiveDur = dur * (1 - resistance);
+    if (effectivePct >= this.slowPct - 0.01 || this.slowT <= 0) this.slowPct = effectivePct;
+    this.slowT = Math.max(this.slowT, effectiveDur);
+    return true;
   }
 
   hurt(raw, opts = {}) {
@@ -267,6 +275,7 @@ export class Enemy {
       this.shieldT -= dt;
       if (this.shieldT <= 0) {
         this.shield = this.shieldMax;
+        this.shieldT = this.shieldCooldown;
         ctx.fx.ring(this.pos, 1.2, 0x9fd8ff, 0.4);
       }
     }
@@ -457,6 +466,20 @@ export class Tower {
     const s = { ...base };
     s.dmg = Math.round(base.dmg * (1 + (spec.damagePct || 0) + Math.min(1, (aura.damagePct || 0) + (timed.damagePct || 0))));
     s.rate = Math.min(4, base.rate * (1 + (spec.ratePct || 0) + Math.min(0.8, (aura.ratePct || 0) + (timed.ratePct || 0))));
+    s.armorPenetration = Math.min(1, (base.armorPenetration || 0) + (spec.armorPenetration || 0));
+    s.ignoreArmor = !!base.ignoreArmor;
+    if (spec.trueDamage) s.damageType = 'true';
+    if (Number.isFinite(base.splash)) s.splash = base.splash * (1 + (spec.splashPct || 0));
+    if (Number.isFinite(base.chains)) s.chains = Math.max(1, base.chains + (spec.chains || 0));
+    if (Number.isFinite(base.chainRange)) s.chainRange = base.chainRange * (1 + (spec.chainRangePct || 0));
+    if (base.slow) s.slow = {
+      pct: Math.min(0.95, base.slow.pct + (spec.slowPct || 0)),
+      dur: base.slow.dur * (1 + (spec.slowDurationPct || 0)),
+    };
+    if (this.key === 'tesla' && ctx && (this.overloadUntil || 0) > ctx.time) {
+      s.rate = Math.min(4, s.rate * (this.overloadRate || 1));
+      s.dmg = Math.max(1, Math.round(s.dmg * (this.overloadDamageMul || 1)));
+    }
     if (base.aura) s.aura = {
       damagePct: base.aura.damagePct + (spec.auraDamagePct || 0),
       ratePct: base.aura.ratePct + (spec.auraRatePct || 0),
@@ -507,15 +530,25 @@ export class Tower {
 
   fire(target, ctx) {
     const s = this.combatStats();
+    const spec = specializationModifiers(this);
     if (!targetMatches(s.targets, target) || xzDistanceSq(target.pos, this.pos) > s.range ** 2) return false;
     const damageOpts = {
       damageType: s.damageType,
       armorPenetration: s.armorPenetration,
-      ignoreArmor: s.ignoreArmor,
+      ignoreArmor: s.ignoreArmor || s.pierce,
       minimumDamage: s.minimumDamage,
       allowZero: s.allowZero,
-      effects: this.key === 'venom' ? { poison: this.poisonSpec() } : undefined,
+      effects: this.key === 'venom' ? { poison: this.poisonSpec() }
+        : this.key === 'tesla' && spec.slow ? { slow: { ...spec.slow } } : undefined,
       sourceTowerId: this.id,
+      sourceTowerKey: this.key,
+      attackModifiers: {
+        eliteDamagePct: spec.eliteDamagePct || 0,
+        bossDamagePct: spec.bossDamagePct || 0,
+        slowedDamagePct: spec.slowedDamagePct || 0,
+        critChance: spec.critChance || 0,
+        critMultiplier: spec.critMultiplier || 0,
+      },
       targetMask: s.targets,
     };
     const muzzle = this.mesh.userData.muzzle

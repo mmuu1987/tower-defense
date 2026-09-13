@@ -1,4 +1,4 @@
-﻿#!/usr/bin/env node
+#!/usr/bin/env node
 // 从已解压的 Kenney 包中拷贝精选模型到 assets/models/（平铺），供 GLTFLoader 使用
 import fs from 'node:fs';
 import path from 'node:path';

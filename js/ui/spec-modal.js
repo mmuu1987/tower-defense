@@ -1,7 +1,7 @@
 // 专精选择模态框 - G5 UI 增强
 import { specializationFor } from '../game/skills.js';
 
-export function createSpecModal() {
+export function createSpecModal({ battle = null } = {}) {
   const modal = document.createElement('div');
   modal.id = 'spec-modal';
   modal.className = 'hidden';
@@ -18,7 +18,7 @@ export function createSpecModal() {
   const cards = modal.querySelector('.spec-cards');
   
   let onChoose = null;
-  let wasPlaying = false;
+  let pausedByModal = false;
 
   function formatModifier(key, value) {
     // 格式化修改器显示
@@ -107,15 +107,15 @@ export function createSpecModal() {
       for (const btn of cards.querySelectorAll('.spec-choose')) {
         btn.onclick = () => {
           const branch = btn.dataset.branch;
+          const choose = onChoose;
           api.hide();
-          onChoose?.(branch);
+          choose?.(branch);
         };
       }
       
       // 暂停游戏（如果正在战斗）
-      const battle = tower.battle || window.battleInstance;
       if (battle && !battle.paused) {
-        wasPlaying = true;
+        pausedByModal = true;
         battle.setPaused(true);
       }
       
@@ -128,14 +128,15 @@ export function createSpecModal() {
       modal.classList.add('hidden');
       
       // 恢复游戏
-      const battle = window.battleInstance;
-      if (battle && wasPlaying) {
+      if (battle && pausedByModal) {
         battle.setPaused(false);
-        wasPlaying = false;
+        pausedByModal = false;
       }
+      onChoose = null;
     },
     
     destroy() {
+      api.hide();
       modal.remove();
     },
   };

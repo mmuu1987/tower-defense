@@ -9,14 +9,38 @@ const DEFAULTS = {
   admin: false,      // 管理员模式：选关界面全解锁（不影响"继续冒险"的真实进度推算）
 };
 
+function normalize(raw) {
+  const parsed = raw && typeof raw === 'object' ? raw : {};
+  const levels = {};
+  if (parsed.levels && typeof parsed.levels === 'object' && !Array.isArray(parsed.levels)) {
+    for (const [key, value] of Object.entries(parsed.levels)) {
+      if (!/^[0-4],[0-9]$/.test(key) || !Number.isFinite(Number(value))) continue;
+      levels[key] = Math.max(0, Math.min(3, Math.floor(Number(value))));
+    }
+  }
+  const sourceSettings = parsed.settings && typeof parsed.settings === 'object' ? parsed.settings : {};
+  const volume = Number(sourceSettings.volume);
+  const quality = ['low', 'medium', 'high'].includes(sourceSettings.quality) ? sourceSettings.quality : DEFAULTS.settings.quality;
+  return {
+    v: DEFAULTS.v,
+    levels,
+    settings: {
+      volume: Number.isFinite(volume) ? Math.max(0, Math.min(1, volume)) : DEFAULTS.settings.volume,
+      muted: !!sourceSettings.muted,
+      quality,
+    },
+    tutorialDone: !!parsed.tutorialDone,
+    admin: !!parsed.admin,
+  };
+}
+
 export const save = {
   data: null,
 
   load() {
     try {
       const raw = localStorage.getItem(KEY);
-      this.data = raw ? { ...structuredClone(DEFAULTS), ...JSON.parse(raw) } : structuredClone(DEFAULTS);
-      this.data.settings = { ...DEFAULTS.settings, ...(this.data.settings || {}) };
+      this.data = normalize(raw ? JSON.parse(raw) : DEFAULTS);
     } catch {
       this.data = structuredClone(DEFAULTS);
     }

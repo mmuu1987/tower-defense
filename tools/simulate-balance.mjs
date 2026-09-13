@@ -1,57 +1,85 @@
-// tools/simulate-balance.mjs - 50 关技能平衡模拟器（G6 M1）
+// Deterministic 50-level balance regression using the real campaign economy.
+import assert from 'node:assert/strict';
+import { writeFileSync } from 'node:fs';
 import * as THREE from 'three';
 import { Battle } from '../js/game/battle.js';
 import { buildLevel } from '../js/game/levelgen.js';
 import { createMapLayout } from '../js/game/map-layout.js';
 import { makePathSampler } from '../js/game/entities.js';
-import { TOWER_DEFS } from '../js/game/towers.js';
-import { writeFileSync } from 'fs';
+import { GRID } from '../js/game/config.js';
+import { TOWER_KEYS, towerCost } from '../js/game/towers.js';
 
-const fx = Object.fromEntries(['update','flash','ring','spark','burst','lightning','beam','decal','shockwave'].map(k=>[k,()=>{}]));
+const fx = Object.fromEntries(
+  ['update', 'flash', 'ring', 'spark', 'burst', 'lightning', 'beam', 'decal', 'shockwave'].map((key) => [key, () => {}]),
+);
+const BUILD_ORDER = ['arrow', 'frost', 'cannon', 'tesla', 'sniper', 'venom', 'beacon'];
+const MAX_TOWERS = 7;
 
-// 固定建造策略：每个地图恰好放置 7 座塔（每种各 1 座）
-function autoPlace(battle) {
-  const towers = ['arrow','cannon','sniper','tesla','frost','venom','beacon'];
-  const placed = [];
-
-  // 为每种塔类型各放置 1 座
-  for (const key of towers) {
-    let attempts = 0;
-    while (attempts < 50) {
-      attempts++;
-      const cx = Math.floor(Math.random() * 42);
-      const cz = Math.floor(Math.random() * 28);
-
-      if (!battle.isBuildable(cx, cz)) continue;
-      battle.selectBuild(key);
-      if (battle.tryPlace(cx, cz) === true) {
-        placed.push(battle.selectedTower);
-        battle.gold += TOWER_DEFS[key].cost;
-        break;  // 成功放置后跳出循环
-      }
-    }
-  }
-
-  // 升级到 Lv.8 + 随机专精
-  for(const t of placed) {
-    while(t.level < 7) {
-      const branch = Math.random() > 0.5 ? 'A' : 'B';
-      battle.upgradeTower(t, t.requiresSpecialization() ? branch : null);
-      battle.gold += t.upgradeCost();
-    }
-  }
-
-  return placed;
+function seededRandom(seed) {
+  let state = (seed >>> 0) || 1;
+  return () => {
+    state = (state * 1664525 + 1013904223) >>> 0;
+    return state / 0x100000000;
+  };
 }
 
-// 运行单关
+function placementCells(battle, layout, seed) {
+  const random = seededRandom(seed);
+  return Array.from({ length: GRID.w * GRID.h }, (_, index) => {
+    const cx = index % GRID.w, cz = Math.floor(index / GRID.w);
+    const point = battle.cellCenter(cx, cz);
+    return {
+      cx,
+      cz,
+      score: Math.abs(layout.distToPath(point.x, point.z) - 1.45) + Math.abs(point.x) * 0.002 + random() * 0.08,
+    };
+  }).filter(({ cx, cz }) => battle.isBuildable(cx, cz))
+    .sort((a, b) => a.score - b.score || a.cx - b.cx || a.cz - b.cz);
+}
+
+// A deterministic competent-player fixture: obey unlocks and actual gold,
+// keep a seven-tower cap, place near the road, then buy cheapest upgrades.
+function autoInvest(battle, cells, seed) {
+  const unlocked = BUILD_ORDER.filter((key) => battle.isTowerUnlocked(key));
+  const desired = [...unlocked];
+  for (let i = 0; desired.length < MAX_TOWERS; i++) desired.push(unlocked[i % unlocked.length]);
+
+  const wantedByKey = new Map();
+  for (const key of desired) {
+    const wanted = (wantedByKey.get(key) || 0) + 1;
+    wantedByKey.set(key, wanted);
+    if (battle.towers.filter((tower) => tower.key === key).length >= wanted) continue;
+    if (battle.gold < towerCost(key)) return;
+    let cell = cells.find(({ cx, cz }) => battle.isBuildable(cx, cz) && battle.towers.every((tower) =>
+      battle.cellCenter(cx, cz).distanceToSquared(tower.pos) >= 4));
+    cell ||= cells.find(({ cx, cz }) => battle.isBuildable(cx, cz));
+    assert.ok(cell, `no buildable cell for ${key}`);
+    assert.equal(battle.selectBuild(key), true);
+    assert.equal(battle.tryPlace(cell.cx, cell.cz), true);
+  }
+
+  while (true) {
+    const candidate = battle.towers.filter((tower) => tower.canUpgrade() && tower.upgradeCost() <= battle.gold)
+      .sort((a, b) => a.upgradeCost() - b.upgradeCost() || a.level - b.level || a.id - b.id)[0];
+    if (!candidate) break;
+    const index = battle.towers.indexOf(candidate);
+    const branch = ((seed + index) & 1) ? 'A' : 'B';
+    assert.equal(battle.upgradeTower(candidate, candidate.requiresSpecialization() ? branch : null), true,
+      `cannot upgrade ${candidate.key} to Lv.${candidate.level + 2}`);
+  }
+
+  for (const key of TOWER_KEYS) {
+    if (!unlocked.includes(key)) {
+      assert.equal(battle.towers.some((tower) => tower.key === key), false, `locked tower ${key} was placed`);
+    }
+  }
+}
+
 async function runLevel(worldIdx, lvlIdx) {
   const level = buildLevel(worldIdx, lvlIdx);
   const layout = createMapLayout(level.map);
   const samplers = layout.routes.map(makePathSampler);
-
   const stats = { towers: {}, waves: 0, win: false, time: 0 };
-
   const battle = new Battle({
     scene: new THREE.Scene(),
     level,
@@ -61,40 +89,41 @@ async function runLevel(worldIdx, lvlIdx) {
     blockedCells: layout.blockedCells,
     heightAt: layout.heightAt,
     fx,
-    hooks: { camera: new THREE.PerspectiveCamera() }
+    random: seededRandom(level.map.seed ^ 0x9e3779b9),
+    hooks: { camera: new THREE.PerspectiveCamera() },
   });
 
-  // 追踪技能数据和伤害
+  for (const key of TOWER_KEYS) stats.towers[key] = { sig: 0, ult: 0, sigDmg: 0, ultDmg: 0, casts: 0 };
   const skillDamage = {};
   const originalHit = battle.hitEnemy.bind(battle);
   battle.hitEnemy = (enemy, damage, opts) => {
-    if(opts?.sourceTowerId) {
-      const tower = battle.towers.find(t => t.id === opts.sourceTowerId);
-      if(tower && battle._activeSkill) {
-        const key = tower.key + ':' + battle._activeSkill;
-        skillDamage[key] = (skillDamage[key] || 0) + damage;
+    const result = originalHit(enemy, damage, opts);
+    if (opts?.sourceTowerId && opts?.skillTier) {
+      const tower = battle.towers.find((candidate) => candidate.id === opts.sourceTowerId);
+      if (tower) {
+        const key = tower.key + ':' + opts.skillTier;
+        skillDamage[key] = (skillDamage[key] || 0) + (result?.totalDamage || 0);
       }
     }
-    return originalHit(enemy, damage, opts);
+    return result;
+  };
+  battle.hooks.onSkill = (tower, tier) => {
+    const data = stats.towers[tower.key];
+    if (tier === 'signature') data.sig++;
+    else data.ult++;
+    data.casts++;
   };
 
-  const onSkill = (tower, tier) => {
-    const key = tower.key;
-    if(!stats.towers[key]) stats.towers[key] = { sig: 0, ult: 0, sigDmg: 0, ultDmg: 0, casts: 0 };
-    battle._activeSkill = tier;
-    if(tier === 'signature') stats.towers[key].sig++;
-    else stats.towers[key].ult++;
-    stats.towers[key].casts++;
-    setTimeout(() => { battle._activeSkill = null; }, 100);
-  };
-  battle.hooks.onSkill = onSkill;
-
-  const towers = autoPlace(battle);
-
-  // 模拟战斗
-  while(battle.state !== 'won' && battle.state !== 'lost' && battle.time < 1800) {
-    if(battle.state === 'build') battle.startWave();
-    battle.update(1/60);
+  const cells = placementCells(battle, layout, level.map.seed);
+  let nextInvestment = 0;
+  while (battle.state !== 'won' && battle.state !== 'lost' && battle.time < 1800) {
+    if (battle.state === 'intermission') battle.callWaveEarly();
+    if (battle.state === 'build' || battle.time >= nextInvestment) {
+      autoInvest(battle, cells, level.map.seed);
+      nextInvestment = battle.time + 1;
+    }
+    if (battle.state === 'build') battle.startWave();
+    battle.update(0.05);
   }
 
   stats.win = battle.state === 'won';
@@ -102,73 +131,61 @@ async function runLevel(worldIdx, lvlIdx) {
   stats.time = battle.time;
   stats.kills = battle.kills;
   stats.leaks = battle.leaks;
-
-  // 汇总技能伤害
-  for(const [key, dmg] of Object.entries(skillDamage)) {
+  stats.startGold = level.startGold;
+  stats.finalGold = battle.gold;
+  stats.invested = battle.towers.reduce((sum, tower) => sum + tower.invested, 0);
+  for (const [key, damage] of Object.entries(skillDamage)) {
     const [towerKey, tier] = key.split(':');
-    if(stats.towers[towerKey]) {
-      if(tier === 'signature') stats.towers[towerKey].sigDmg = dmg;
-      else stats.towers[towerKey].ultDmg = dmg;
-    }
+    if (tier === 'signature') stats.towers[towerKey].sigDmg = damage;
+    else stats.towers[towerKey].ultDmg = damage;
   }
-
   battle.destroy();
   return stats;
 }
 
-// 运行全部 50 关
 async function runAll() {
   const results = [];
-
-  for(let w = 0; w < 5; w++) {
-    for(let l = 0; l < 10; l++) {
-      const idx = w * 10 + l;
-      process.stdout.write(`\r运行关卡 ${idx+1}/50: W${w+1}-${l+1} `);
-
-      const stats = await runLevel(w, l);
-      results.push({ world: w+1, level: l+1, ...stats });
+  for (let world = 0; world < 5; world++) {
+    for (let level = 0; level < 10; level++) {
+      process.stdout.write(`\r运行关卡 ${world * 10 + level + 1}/50: W${world + 1}-${level + 1} `);
+      results.push({ world: world + 1, level: level + 1, ...await runLevel(world, level) });
     }
   }
 
-  console.log('\n\n=== 模拟完成 ===\n');
-
-  // 汇总统计
   const summary = { total: 50, wins: 0, losses: 0, byTower: {} };
-
-  for(const r of results) {
-    if(r.win) summary.wins++; else summary.losses++;
-
-    for(const [key, data] of Object.entries(r.towers)) {
-      if(!summary.byTower[key]) summary.byTower[key] = { sig: 0, ult: 0, sigDmg: 0, ultDmg: 0, total: 0, levels: 0 };
+  for (const result of results) {
+    if (result.win) summary.wins++;
+    else summary.losses++;
+    for (const [key, data] of Object.entries(result.towers)) {
+      summary.byTower[key] ||= { sig: 0, ult: 0, sigDmg: 0, ultDmg: 0, total: 0, levels: 0 };
       summary.byTower[key].sig += data.sig;
       summary.byTower[key].ult += data.ult;
+      summary.byTower[key].sigDmg += data.sigDmg;
+      summary.byTower[key].ultDmg += data.ultDmg;
       summary.byTower[key].total += data.casts;
       summary.byTower[key].levels++;
-      summary.byTower[key].sigDmg += data.sigDmg || 0;
-      summary.byTower[key].ultDmg += data.ultDmg || 0;
     }
   }
 
-  console.log(`胜率: ${summary.wins}/50 (${(summary.wins/50*100).toFixed(1)}%)\n`);
-  console.log('技能使用统计:\n');
+  assert.equal(results.some((result) => result.time >= 1800), false, 'a balance simulation timed out');
+  assert.ok(summary.wins >= 45, `competent real-economy strategy wins too few levels: ${summary.wins}/50`);
+  const late = results.slice(30);
+  assert.ok(late.some((result) => result.leaks > 0 || !result.win),
+    'late campaign is too weak: the fixed real-economy strategy perfect-cleared every level');
 
-  for(const [key, data] of Object.entries(summary.byTower)) {
-    const avgSig = (data.sig / data.levels).toFixed(1);
-    const avgSigDmg = (data.sigDmg / data.levels).toFixed(0);
-    const avgUltDmg = (data.ultDmg / data.levels).toFixed(0);
-    const avgUlt = (data.ult / data.levels).toFixed(1);
-    console.log(`${key.padEnd(8)} - 招牌: ${avgSig.padStart(5)}/关 (${avgSigDmg.padStart(6)}伤)  终极: ${avgUlt.padStart(5)}/关 (${avgUltDmg.padStart(6)}伤)`);
+  console.log(`\n\n胜率: ${summary.wins}/50；失败: ${summary.losses}`);
+  for (const [key, data] of Object.entries(summary.byTower)) {
+    console.log(`${key.padEnd(8)} 招牌 ${(data.sig / data.levels).toFixed(1)}/关，终极 ${(data.ult / data.levels).toFixed(1)}/关`);
   }
-
   return { results, summary };
 }
 
-// 执行
-runAll().then(data => {
-  console.log('\n数据已保存到 tools/balance-report.json');
-  writeFileSync('balance-report.json', JSON.stringify(data, null, 2));
-}).catch(err => {
-  console.error('模拟失败:', err);
+runAll().then((data) => {
+  const report = JSON.stringify(data, null, 2);
+  writeFileSync(new URL('./balance-report.json', import.meta.url), report);
+  writeFileSync(new URL('../balance-report.json', import.meta.url), report);
+  console.log('数据已保存到 balance-report.json 与 tools/balance-report.json');
+}).catch((error) => {
+  console.error('模拟失败:', error);
   process.exit(1);
 });
-

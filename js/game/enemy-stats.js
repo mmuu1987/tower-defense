@@ -16,7 +16,16 @@ export const AFFIX_DEFS = {
 export const MAX_ENEMY_LEVEL = 100;
 export const MAX_SUMMON_GENERATION = 1;
 export const MAX_FAMILY_CHILDREN = 8;
+const LATE_GROWTH_START = 18;
+const MAX_LATE_DURABILITY_BONUS = 1.5;
 export const enemyDefinition = (type) => ENEMY_DEFS[type] || BOSS_DEFS[type] || null;
+
+function durabilityGrowth(enemyLevel) {
+  const n = enemyLevel - 1;
+  const base = 1 + n * 0.045 + n * n * 0.00038;
+  const lateProgress = Math.max(0, n - LATE_GROWTH_START) / (MAX_ENEMY_LEVEL - 1 - LATE_GROWTH_START);
+  return base * (1 + Math.pow(lateProgress, 1.6) * MAX_LATE_DURABILITY_BONUS);
+}
 
 export function enemyProfile(type, { enemyLevel = 1, rank = BOSS_DEFS[type] ? 'boss' : 'normal', affixes = [] } = {}) {
   const def = enemyDefinition(type);
@@ -25,7 +34,9 @@ export function enemyProfile(type, { enemyLevel = 1, rank = BOSS_DEFS[type] ? 'b
       new Set(affixes).size !== affixes.length || affixes.some((key) => !AFFIX_DEFS[key]) ||
       (affixes.length && rank !== 'elite') || (affixes.includes('shielded') && affixes.includes('regenerating'))) throw new Error('Invalid rank or affix combination');
   const n = enemyLevel - 1;
-  const growth = 1 + n * 0.045 + n * n * 0.00038;
+  // Early levels retain their original curve; late durability ramps to 2.5x
+  // the old value at level 100 so maxed towers no longer erase whole waves.
+  const growth = durabilityGrowth(enemyLevel);
   const hp = Math.max(1, Math.round(def.hp * growth * (rank === 'elite' ? 1.6 : 1)));
   const result = {
     type, enemyLevel, rank, affixes: [...affixes], hp,

@@ -50,6 +50,9 @@ try {
       assert.equal(await page.locator('.spec-btn').count(), 2);
       await page.screenshot({ path: 'logs/growth/' + viewport.width + '-' + key + '-specialization.png' });
       await page.locator('.spec-btn[data-branch="B"]').click();
+      assert.equal(await page.evaluate(() => window.__TD_DEBUG.battle().paused), true, '专精弹窗必须暂停战斗');
+      await page.locator('.spec-choose[data-branch="B"]').click();
+      assert.equal(await page.evaluate(() => window.__TD_DEBUG.battle().paused), false, '选择后必须恢复战斗');
       assert.deepEqual(await page.evaluate(() => { const b = window.__TD_DEBUG.battle(); return [b.selectedTower.level, b.selectedTower.specialization, b.gold]; }), [5, 'B', before.gold - before.fee]);
       await page.locator('#p-up').click();
       await page.locator('#p-up').click();
@@ -77,12 +80,14 @@ try {
       await page.screenshot({ path: 'logs/growth/' + viewport.width + '-' + key + '-level8.png' });
       rows.push({ viewport: viewport.width + 'x' + viewport.height, key, ...layout });
     }
-    await page.evaluate(() => {
+    await page.evaluate(async () => {
       const b = window.__TD_DEBUG.battle();
+      const { enemyProfile } = await import('./js/game/enemy-stats.js');
       b.state = 'combat'; b.spawnQueue = [{ t: 10000, type: 'grunt', route: 0 }];
       const anchor = b.sampler.total * 0.3;
       for (let i = 0; i < 12; i++) {
-        const e = b.spawnEnemy(i === 11 ? 'flyer' : 'grunt', 0);
+        const e = b.spawnEnemy(enemyProfile(i === 11 ? 'flyer' : 'grunt', { enemyLevel: 1 }),
+          { groupId: 'browser-fixture', unit: i, bounty: 0, route: 0 });
         e.dist = anchor + i * 0.12; e.sampler.at(e.dist, e.pos); b.enemyIndex.update(e);
         e.hp = e.maxHp = 100000; e.baseSpeed = e.effectiveSpeed = 0.1;
       }

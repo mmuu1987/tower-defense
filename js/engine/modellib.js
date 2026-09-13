@@ -7,7 +7,7 @@ import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
 const loader = new GLTFLoader();
 // 模型基准路径：相对本模块解析，任何部署深度都正确（本地/GitHub子路径/itch.io iframe）
 const MODEL_BASE = new URL('../../assets/models/', import.meta.url);
-const cache = {};    // name -> { tpl: Group(已归一化), height: number } | null = 加载失败
+const cache = {};    // name -> { tpl: Group(已归一化), height: number }；失败不缓存，允许重试
 const inflight = {};
 
 export function loadOne(name, timeoutMs = 20000) {
@@ -17,6 +17,7 @@ export function loadOne(name, timeoutMs = 20000) {
   if (!inflight[name]) {
     inflight[name] = new Promise((resolve) => {
       let settled = false;
+      const controller = new AbortController();
       const report = (why, err) => {
         const msg = `[model] ${name} ${why}${err ? ': ' + ((err && (err.message || err)) || err) : ''}`;
         console.error(msg);
@@ -26,18 +27,23 @@ export function loadOne(name, timeoutMs = 20000) {
         if (settled) return;
         settled = true;
         clearTimeout(timer);
-        cache[name] = val;
+        if (val) cache[name] = val;
+        else delete cache[name];
+        delete inflight[name];
         resolve(val);
       };
-      const timer = setTimeout(() => { report('TIMEOUT'); finish(null); }, timeoutMs);
+      const timer = setTimeout(() => { report('TIMEOUT'); controller.abort(); finish(null); }, timeoutMs);
 
       (async () => {
         try {
           // .dat = glTF-Binary 改名（4399 上传包扩展名白名单不含 .glb，内容不变）
-          const res = await fetch(new URL(`${name}.dat`, MODEL_BASE));
+          const res = await fetch(new URL(`${name}.dat`, MODEL_BASE), { signal: controller.signal });
           if (!res.ok) throw new Error(`HTTP ${res.status}`);
           const buf = await res.arrayBuffer();
-          loader.parse(buf, '', (g) => {
+          // Kenney GLBs reference their shared palette as Textures/colormap.png.
+          // Give GLTFLoader the model directory so relative resources do not fall
+          // back to the site root and generate a 404 for every loaded prop.
+          loader.parse(buf, MODEL_BASE.href, (g) => {
             try {
               const root = g.scene;
               const box = new THREE.Box3().setFromObject(root);
@@ -56,8 +62,10 @@ export function loadOne(name, timeoutMs = 20000) {
             finish(null);
           });
         } catch (e) {
-          report('FETCH-FAIL', e);
-          finish(null);
+          if (!settled) {
+            report('FETCH-FAIL', e);
+            finish(null);
+          }
         }
       })();
     });
@@ -146,6 +154,7 @@ export function loadEnemyTemplate(name, timeoutMs = 20000) {
   if (!enemyInflight[name]) {
     enemyInflight[name] = new Promise((resolve) => {
       let settled = false;
+      const controller = new AbortController();
       const report = (why, err) => {
         const msg = `[enemy-model] ${name} ${why}${err ? ': ' + ((err && (err.message || err)) || err) : ''}`;
         console.error(msg);
@@ -155,15 +164,17 @@ export function loadEnemyTemplate(name, timeoutMs = 20000) {
         if (settled) return;
         settled = true;
         clearTimeout(timer);
-        enemyCache[name] = val;
+        if (val) enemyCache[name] = val;
+        else delete enemyCache[name];
+        delete enemyInflight[name];
         resolve(val);
       };
-      const timer = setTimeout(() => { report('TIMEOUT'); finish(null); }, timeoutMs);
+      const timer = setTimeout(() => { report('TIMEOUT'); controller.abort(); finish(null); }, timeoutMs);
       (async () => {
         try {
           // modellib 位于 js/engine/ → ../../assets/models/enemies/
           const url = new URL(`../../assets/models/enemies/${name}.dat`, import.meta.url);
-          const res = await fetch(url);
+          const res = await fetch(url, { signal: controller.signal });
           if (!res.ok) throw new Error(`HTTP ${res.status}`);
           const buf = await res.arrayBuffer();
           loader.parse(buf, '', (g) => {
@@ -238,8 +249,10 @@ export function loadEnemyTemplate(name, timeoutMs = 20000) {
             finish({ tpl: root, height, animations: g.animations || [] });
           }, (e) => { report('PARSE-ERROR', e); finish(null); });
         } catch (e) {
-          report('FETCH-FAIL', e);
-          finish(null);
+          if (!settled) {
+            report('FETCH-FAIL', e);
+            finish(null);
+          }
         }
       })();
     });

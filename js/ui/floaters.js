@@ -1,6 +1,12 @@
 // DOM 飘字：伤害数字 / 金币 / 提示，投影世界坐标到屏幕后 CSS 动画上浮消散
 import * as THREE from 'three';
 
+export function formatDamage(value) {
+  const damage = Number(value);
+  if (!Number.isFinite(damage) || damage <= 0) return null;
+  return String(Math.max(1, Math.round(damage)));
+}
+
 export class Floaters {
   constructor(camera) {
     this.camera = camera;
@@ -30,7 +36,11 @@ export class Floaters {
     this._spawn(text, cls);
   }
 
-  damage(pos, n, crit = false, colorCls = '') { this.at(pos, crit ? `${n}!` : `${n}`, (crit ? 'crit ' : 'dmg ') + colorCls); }
+  damage(pos, n, crit = false, colorCls = '') {
+    const shown = formatDamage(n);
+    if (shown === null) return;
+    this.at(pos, crit ? `${shown}!` : shown, (crit ? 'crit ' : 'dmg ') + colorCls);
+  }
   gold(pos, n) { this.at(pos, `+${n} ⛁`, 'goldf'); }
   text(pos, str, cls = '') { this.at(pos, str, 'info ' + cls); }
 }

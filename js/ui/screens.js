@@ -179,8 +179,9 @@ export function createSettingsPanel({ save, audio, applyQuality, onReplayTutoria
     const v = Number(vol.value) / 100;
     volV.textContent = `${vol.value}%`;
     audio?.setVolume(v);
-    audio?.setMuted(v === 0 || audio.muted);
+    audio?.setMuted(v === 0);
     save.setSetting('volume', v);
+    save.setSetting('muted', v === 0);
   };
   const q = root.querySelector('#set-q');
   q.value = s.quality || 'high';

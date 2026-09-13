@@ -35,8 +35,13 @@ function send(res, code, body) {
 }
 
 function safeJoin(root, rel) {
-  const p = path.normalize(path.join(root, decodeURIComponent(rel)));
-  return p.startsWith(root) ? p : null;
+  let decoded;
+  try { decoded = decodeURIComponent(rel).replace(/^[/\\]+/, ''); }
+  catch { return null; }
+  const p = path.resolve(root, decoded);
+  const fromRoot = path.relative(root, p);
+  if (fromRoot === '..' || fromRoot.startsWith('..' + path.sep) || path.isAbsolute(fromRoot)) return null;
+  return p;
 }
 
 const server = http.createServer((req, res) => {

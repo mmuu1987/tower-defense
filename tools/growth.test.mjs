@@ -138,7 +138,7 @@ test('skills unlock with full cooldown and upgrades do not refresh existing cool
   assert.equal(tower.skillRemaining('ultimate'), 20);
 });
 
-test('arrow skills respect cooldown, combat, target range, manual mode and five-target cap', (t) => {
+test('arrow skills respect cooldown, combat, target range, manual mode and four-target cap', (t) => {
   const b = setup(t), tower = place(b);
   grow(b, tower, 8, 'B');
   tower.skillCooldowns = { signature: 0, ultimate: 0 };
@@ -159,7 +159,7 @@ test('arrow skills respect cooldown, combat, target range, manual mode and five-
   b.projectiles.list.forEach((p) => b.scene.remove(p.mesh));
   b.projectiles.list = [];
   assert.equal(b.useSelectedSkill('ultimate'), true);
-  assert.equal(b.projectiles.list.length, 5);
+  assert.equal(b.projectiles.list.length, 4);
   assert.ok(b.projectiles.list.every((p) => targets.includes(p.target)));
   assert.equal(b.useSelectedSkill('ultimate'), false);
   assert.equal(casts, 1);
@@ -253,7 +253,7 @@ test('poison death near exit settles only one bounty and never leaks or reindexe
   assert.equal(b.kills, 1);
 });
 
-test('venom burst impacts at most six ground targets and still lands after target death', (t) => {
+test('venom burst impacts at most four ground targets and still lands after target death', (t) => {
   const b = setup(t), tower = place(b, 'venom');
   grow(b, tower, 4); combat(b);
   const targets = Array.from({ length: 9 }, (_, i) => enemy(b, 'grunt', 1 + i * 0.05));
@@ -265,7 +265,7 @@ test('venom burst impacts at most six ground targets and still lands after targe
   b.kill(shot.target);
   shot.last.copy(impact); shot.mesh.position.copy(impact);
   b.projectiles.update(SIMULATION_STEP, b._ctx());
-  assert.equal(targets.filter((e) => poisonStacks(e) > 0).length, 6);
+  assert.equal(targets.filter((e) => poisonStacks(e) > 0).length, 4);
   assert.equal(poisonStacks(air), 0);
 });
 
@@ -277,7 +277,7 @@ test('toxic cloud persists, affects ground only, has a bounded population and fr
   tower.skillCooldowns.ultimate = 0;
   assert.equal(b.useSelectedSkill('ultimate'), true);
   assert.equal(b.fields.length, 1);
-  assert.equal(targets.filter((e) => poisonStacks(e)).length, 12);
+  assert.equal(targets.filter((e) => poisonStacks(e)).length, 8);
   assert.equal(poisonStacks(air), 0);
   const field = b.fields[0];
   let disposed = 0;
@@ -286,7 +286,7 @@ test('toxic cloud persists, affects ground only, has a bounded population and fr
     mesh.material.addEventListener('dispose', () => disposed++);
   }
   b.setPaused(true); b.update(0.25);
-  assert.equal(field.remaining, 6);
+  assert.equal(field.remaining, 5);
   b.setPaused(false);
   assert.equal(b.sellSelected(), true);
   assert.equal(b.fields.length, 0);
@@ -335,6 +335,8 @@ test('beacon skills require active allies; timed buffs cap, expire and stop out 
   assert.equal(beacon.timedBuffs.length, 0);
   b.refreshTowerStats();
   assert.equal(arrow.timedBuffs.length, 1);
+  assert.deepEqual(arrow.timedBuffs[0].modifiers,
+    { damagePct: 0.25, ratePct: 0.18, skillCooldownPct: 0.12 });
   assert.ok(arrow.combatStats().rate > arrow.stats.rate);
   arrow.addTimedBuff(beacon.id, b.time, 1, { damagePct: 99, ratePct: 99, skillCooldownPct: 99 });
   b.refreshTowerStats();
@@ -406,4 +408,112 @@ test('growth materials are instance-owned and each is released once on sale', (t
   tower.dispose(b.scene);
   assert.equal(counts.size, materials.size);
   assert.ok([...counts.values()].every((count) => count === 1));
+});
+
+test('timed vulnerability effects amplify damage and expire on simulation time', (t) => {
+  const b = setup(t), e = enemy(b);
+  combat(b); b.time = 1;
+  e.effects.marked = { until: 9, allDamagePct: 0.25, sniperDamagePct: 0.2 };
+  let hp = e.hp;
+  b.hitEnemy(e, 100, { damageType: 'true', sourceTowerKey: 'sniper' });
+  assert.equal(hp - e.hp, 145);
+  e.effects.frostVulnerable = { until: 7, allDamagePct: 0.15 };
+  hp = e.hp;
+  b.hitEnemy(e, 100, { damageType: 'true', sourceTowerKey: 'arrow' });
+  assert.equal(hp - e.hp, 140);
+  b.time = 9;
+  hp = e.hp;
+  b.hitEnemy(e, 100, { damageType: 'true', sourceTowerKey: 'sniper' });
+  assert.equal(hp - e.hp, 100);
+  assert.equal(e.effects.marked, undefined);
+  assert.equal(e.effects.frostVulnerable, undefined);
+});
+
+test('control resistance shortens slows and shield recharge resets its cooldown', (t) => {
+  const b = setup(t), slowed = enemy(b);
+  slowed.controlResistance = 0.4;
+  assert.equal(slowed.applySlow(0.7, 10), true);
+  assert.equal(slowed.slowPct, 0.7);
+  assert.ok(Math.abs(slowed.slowT - 6) < 1e-9);
+
+  const boss = enemy(b, 'frost');
+  boss.shield = 0; boss.shieldT = 0;
+  boss.update(SIMULATION_STEP, b._ctx());
+  assert.equal(boss.shield, boss.shieldMax);
+  assert.equal(boss.shieldT, boss.shieldCooldown);
+  boss.hurt(boss.shieldMax, { damageType: 'true' });
+  boss.update(SIMULATION_STEP, b._ctx());
+  assert.equal(boss.shield, 0, '第二次破盾后必须重新等待冷却');
+});
+
+test('summoned children cannot steal another family member bounty', (t) => {
+  const b = setup(t); b.waveIdx = 0;
+  const family = 'split-family';
+  assert.equal(b.ledger.registerFamily(family, 20, [
+    { id: family + ':0', amount: 10 }, { id: family + ':1', amount: 10 },
+  ]), true);
+  const profile = enemyProfile('splitter', { enemyLevel: 1 });
+  const first = b.spawnEnemy(profile, { groupId: family, unit: 0, bounty: 10, route: 0 });
+  const second = b.spawnEnemy(profile, { groupId: family, unit: 1, bounty: 10, route: 0 });
+  const opening = b.gold;
+  assert.equal(second.reward, 10);
+  b.kill(second);
+  assert.equal(b.gold, opening + 10);
+  const child = b.enemies.find((e) => e !== first && e !== second);
+  assert.equal(child.ticket.claimable, false);
+  assert.equal(child.reward, 0);
+  b.kill(child);
+  assert.equal(b.gold, opening + 10);
+  b.kill(first);
+  assert.equal(b.gold, opening + 20);
+});
+
+test('specialization modifiers are reflected in effective combat stats', (t) => {
+  const b = setup(t);
+  const check = (key, branch, verify) => {
+    const tower = place(b, key);
+    grow(b, tower, 6, branch);
+    verify(tower.combatStats(), tower.stats, tower);
+    b.sellSelected();
+  };
+  check('cannon', 'A', (s, base) => assert.ok(s.armorPenetration > base.armorPenetration));
+  check('cannon', 'B', (s, base) => assert.ok(s.splash > base.splash));
+  check('sniper', 'A', (s) => assert.equal(s.damageType, 'true'));
+  check('tesla', 'A', (s, base) => {
+    assert.ok(s.chains > base.chains);
+    assert.ok(s.chainRange > base.chainRange);
+  });
+  check('frost', 'A', (s, base) => {
+    assert.ok(s.slow.pct > base.slow.pct);
+    assert.ok(s.slow.dur > base.slow.dur);
+  });
+});
+
+test('enemy durability keeps early levels stable and ramps up in late campaign', () => {
+  const early = enemyProfile('grunt', { enemyLevel: 18 }).hp;
+  const mid = enemyProfile('grunt', { enemyLevel: 60 }).hp;
+  const late = enemyProfile('grunt', { enemyLevel: 100 }).hp;
+  assert.equal(early, 97, 'early campaign curve should remain unchanged');
+  assert.ok(mid >= 380, `mid-campaign durability is too low: ${mid}`);
+  assert.ok(late >= 1190, `late-campaign durability is too low: ${late}`);
+  assert.ok(late > mid * 3, 'late growth must outpace the linear tower power curve');
+
+  const lateTypes = ['grunt', 'runner', 'tank', 'flyer', 'healer', 'splitter', 'fox', 'flamingo', 'mummy', 'stork', 'dancer'];
+  const lateProfiles = lateTypes.map((type) => enemyProfile(type, { enemyLevel: 100 }));
+  const strongestNonSniperHit = Math.max(...['arrow', 'cannon', 'frost', 'tesla', 'venom']
+    .map((key) => statsFor(key, 7).dmg));
+  assert.ok(lateProfiles.every((profile) => profile.hp > strongestNonSniperHit),
+    'no late common enemy should be erased by one non-sniper basic hit');
+  const sniperHit = statsFor('sniper', 7).dmg;
+  assert.ok(lateProfiles.filter((profile) => profile.hp <= sniperHit).length <= 3,
+    'the dedicated sniper may one-shot only the lightest late enemies');
+  assert.ok(enemyProfile('meadow', { enemyLevel: 100 }).hp > sniperHit * 10,
+    'even the weakest late boss must survive sustained max-sniper fire');
+
+  const gruntHp = enemyProfile('grunt', { enemyLevel: 100 }).hp;
+  for (const key of ['arrow', 'cannon', 'frost', 'tesla', 'sniper', 'venom']) {
+    const stats = statsFor(key, 7);
+    const basicTtk = gruntHp / (stats.dmg * stats.rate);
+    assert.ok(basicTtk >= 2, `${key} max-level basic TTK is too short: ${basicTtk.toFixed(2)}s`);
+  }
 });

@@ -108,6 +108,10 @@ test('炮塔技能：集束炮击', (t) => {
   assert.equal(battle.useSelectedSkill('signature'), true, '应能释放集束炮击');
   const after = battle.projectiles.list.length;
   assert.ok(after > before, '应生成炮弹');
+  assert.ok(battle.projectiles.list.every((p) => Number.isFinite(p.T) && p.T > 0), '炮弹飞行时间必须有效');
+  const hp = target.hp;
+  for (let i = 0; i < 300 && battle.projectiles.list.length; i++) battle.projectiles.update(1 / 60, battle._ctx());
+  assert.ok(target.hp < hp, '集束炮击落地后必须造成伤害');
   assert.ok(tower.skillCooldowns.signature > 0, '应进入冷却');
 });
 
@@ -129,8 +133,49 @@ test('电塔技能：过载', (t) => {
   combat(battle);
   const target = enemy(battle);
   tower.skillCooldowns = { signature: 0 };
+  const before = tower.combatStats().rate;
   assert.equal(battle.useSelectedSkill('signature'), true, '应能释放过载');
+  tower._refreshCombatStats(battle._ctx());
+  assert.ok(tower.combatStats().rate > before * 1.5, '过载期间攻速应有明显提高');
+  assert.ok(tower.combatStats().rate <= before * 1.7, '过载不应再次把攻速推到失控区间');
+  battle.time = tower.overloadUntil + 0.01;
+  tower._refreshCombatStats(battle._ctx());
+  assert.equal(tower.combatStats().rate, before, '过载结束后攻速应恢复');
   assert.ok(tower.skillCooldowns.signature > 0, '应进入冷却');
+});
+
+test('EMP 与冰霜技能通过统一效果协议施加减速', (t) => {
+  for (const key of ['tesla', 'frost']) {
+    const battle = setup(t), tower = place(battle, key);
+    grow(battle, tower, key === 'tesla' ? 8 : 4);
+    combat(battle);
+    const target = enemy(battle);
+    const tier = key === 'tesla' ? 'ultimate' : 'signature';
+    tower.skillCooldowns[tier] = 0;
+    assert.equal(battle.useSelectedSkill(tier), true);
+    assert.ok(target.slowPct > 0 && target.slowT > 0, `${key} 技能必须真正减速目标`);
+    battle.destroy();
+  }
+});
+
+test('狙击穿甲与 Tesla 减速专精进入实际命中链路', (t) => {
+  const sniperBattle = setup(t), sniper = place(sniperBattle, 'sniper');
+  combat(sniperBattle);
+  const armored = enemy(sniperBattle);
+  armored.armor = 20;
+  const hp = armored.hp;
+  assert.equal(sniper.fire(armored, sniperBattle._ctx()), true);
+  for (let i = 0; i < 120 && sniperBattle.projectiles.list.length; i++) {
+    sniperBattle.projectiles.update(1 / 60, sniperBattle._ctx());
+  }
+  assert.equal(hp - armored.hp, sniper.combatStats().dmg, '狙击塔应无视护甲');
+
+  const teslaBattle = setup(t), tesla = place(teslaBattle, 'tesla');
+  grow(teslaBattle, tesla, 6, 'B');
+  combat(teslaBattle);
+  const target = enemy(teslaBattle);
+  assert.equal(tesla.fire(target, teslaBattle._ctx()), true);
+  assert.ok(target.slowPct > 0 && target.slowT > 0, 'Tesla B 普攻应附带减速');
 });
 
 test('寒冰塔技能：冰环新星', (t) => {
@@ -142,6 +187,39 @@ test('寒冰塔技能：冰环新星', (t) => {
   tower.skillCooldowns = { signature: 0 };
   assert.equal(battle.useSelectedSkill('signature'), true, '应能释放冰环新星');
   assert.ok(tower.skillCooldowns.signature > 0, '应进入冷却');
+});
+
+test('满级主动技能的爆发与增伤预算保持受控', (t) => {
+  const cannonBattle = setup(t), cannon = place(cannonBattle, 'cannon');
+  grow(cannonBattle, cannon, 8, 'B'); combat(cannonBattle); enemy(cannonBattle);
+  cannon.skillCooldowns.ultimate = 0;
+  assert.equal(cannonBattle.useSelectedSkill('ultimate'), true);
+  assert.equal(cannonBattle.projectiles.list.length, 6, '地毯轰炸只应投放六枚炮弹');
+  const shellDamage = cannonBattle.projectiles.list.reduce((sum, projectile) => sum + projectile.dmg, 0);
+  assert.ok(shellDamage <= cannon.combatStats().dmg * 3.4, '地毯轰炸总基础伤害不应超过 3.4 次普攻');
+  assert.ok(cannonBattle.projectiles.list.every((projectile) => projectile.splash <= 2.2),
+    '地毯轰炸不应覆盖过大的区域');
+
+  const sniperBattle = setup(t), sniper = place(sniperBattle, 'sniper');
+  grow(sniperBattle, sniper, 8, 'A'); combat(sniperBattle);
+  const marked = enemy(sniperBattle);
+  sniper.skillCooldowns.ultimate = 0;
+  assert.equal(sniperBattle.useSelectedSkill('ultimate'), true);
+  assert.equal(marked.effects.marked.allDamagePct, 0.12);
+  assert.equal(marked.effects.marked.sniperDamagePct, 0.08);
+  assert.equal(marked.effects.marked.until - sniperBattle.time, 6);
+
+  for (const [key, multiplier] of [['tesla', 1.4], ['frost', 1.5]]) {
+    const battle = setup(t), tower = place(battle, key);
+    grow(battle, tower, 8, 'A'); combat(battle);
+    const target = enemy(battle);
+    target.resistance = 0;
+    const hp = target.hp;
+    tower.skillCooldowns.ultimate = 0;
+    assert.equal(battle.useSelectedSkill('ultimate'), true);
+    assert.ok(hp - target.hp <= Math.round(tower.combatStats().dmg * multiplier),
+      `${key} 终极技能对单体的瞬时伤害不应超过设定预算`);
+  }
 });
 
 test('四塔专精在 Lv.6 生效', (t) => {

@@ -5,9 +5,13 @@ import { TOWER_DEFS, towerUnlocked } from '../game/towers.js';
 import { skillFor } from '../game/skills.js';
 import { createSpecModal } from './spec-modal.js';
 const icon = (name) => `<img class="tool-icon" src="./vendor/lucide/${name}.svg" alt="">`;
-export function createHud(battle, { audio, onSpeed, onQuit, onPause }) {
+export const mutePresentation = (muted) => muted
+  ? { title: '取消静音', icon: 'volume-x' }
+  : { title: '静音', icon: 'volume-2' };
+export function createHud(battle, { audio, onSpeed, onQuit, onPause, onMute }) {
   // G5: 创建专精选择模态框
-  const specModal = createSpecModal();
+  const specModal = createSpecModal({ battle });
+  const initialMute = mutePresentation(!!audio?.muted);
   const root = document.createElement('div');
   root.id = 'hud';
   root.innerHTML = `
@@ -23,7 +27,7 @@ export function createHud(battle, { audio, onSpeed, onQuit, onPause }) {
     <div id="hud-actions">
       <button id="btn-wave" class="hidden">${icon('play')}<span>开始下一波</span></button>
       <button id="btn-speed" title="战斗速度" aria-label="战斗速度">${icon('fast-forward')}<span>x1</span></button>
-      <button id="btn-mute" title="静音" aria-label="静音">${icon('volume-2')}</button>
+      <button id="btn-mute" title="${initialMute.title}" aria-label="${initialMute.title}">${icon(initialMute.icon)}</button>
       <button id="btn-pause" title="暂停" aria-label="暂停">${icon('pause')}</button>
       <button id="btn-quit" title="撤退" aria-label="撤退">${icon('flag')}</button>
     </div>
@@ -237,6 +241,10 @@ export function createHud(battle, { audio, onSpeed, onQuit, onPause }) {
       root.appendChild(b);
       setTimeout(() => b.remove(), 2600); // 结算弹窗已接管，横幅短暂展示后移除
     },
+    destroy() {
+      specModal.destroy();
+      root.remove();
+    },
   };
 
   // 开波按钮：休整期=提前开战（拿奖励金）；建造期=正常开战
@@ -256,8 +264,10 @@ export function createHud(battle, { audio, onSpeed, onQuit, onPause }) {
   $('#btn-mute').onclick = (e) => {
     const m = !audio.muted;
     audio.setMuted(m);
-    e.currentTarget.innerHTML = icon(m ? 'volume-x' : 'volume-2');
-    e.currentTarget.title = m ? '取消静音' : '静音';
+    onMute?.(m);
+    const presentation = mutePresentation(m);
+    e.currentTarget.innerHTML = icon(presentation.icon);
+    e.currentTarget.title = presentation.title;
     e.currentTarget.setAttribute('aria-label', e.currentTarget.title);
   };
   $('#btn-pause').onclick = () => onPause?.();

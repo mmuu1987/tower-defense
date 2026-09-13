@@ -6,7 +6,7 @@ import { ENEMY_DEFS, BOSS_DEFS } from './units.js';
 import { towerCost, towerUnlocked, TOWER_DEFS } from './towers.js';
 import { SpatialIndex } from './spatial-index.js';
 import { targetMatches, xzDistanceSq } from './combat.js';
-import { applyPoison } from './effects.js';
+import { applyPoison, damageAmplification } from './effects.js';
 import { EconomyLedger } from './economy.js';
 import { childProfiles } from './enemy-stats.js';
 
@@ -14,7 +14,7 @@ const ALL_DEFS = { ...ENEMY_DEFS, ...BOSS_DEFS };
 export const SIMULATION_STEP = 1 / 60;
 
 export class Battle {
-  constructor({ scene, level, sampler, samplers = [sampler], pathCells, blockedCells = new Set(), heightAt = () => 0, fx, hooks = {} }) {
+  constructor({ scene, level, sampler, samplers = [sampler], pathCells, blockedCells = new Set(), heightAt = () => 0, fx, hooks = {}, random = Math.random }) {
     this.scene = scene;
     this.level = level;
     this.sampler = sampler;
@@ -25,6 +25,7 @@ export class Battle {
     this._spawnSerial = 0;
     this.fx = fx;
     this.hooks = hooks;
+    this.random = typeof random === 'function' ? random : Math.random;
 
     this.gold = level.startGold;
     this.lives = level.lives;
@@ -330,9 +331,10 @@ export class Battle {
     this.enemyIndex.remove(e);
     this.kills++;
     // G3: 通过账本领取赏金
-    if (e.ticket && this.ledger) {
+    if (e.ticket && e.ticket.claimable !== false && this.ledger) {
       const amount = this.ledger.claim(e.ticket.groupId, e.ticket.groupId + ':' + e.ticket.unit,
         { wave: this.waveIdx, time: this.time, type: e.def.type });
+      e.reward = amount ?? 0;
       if (amount !== null) this.gold += amount;
     }
     // 死亡光柱：灵魂升天特效
@@ -345,7 +347,13 @@ export class Battle {
       const children = childProfiles(e.profile, e.generation ?? 0);
       for (let i = 0; i < children.length; i++) {
         const childProfile = children[i];
-        const childTicket = { groupId: e.ticket?.groupId ?? 'summon-' + e.id, unit: i, bounty: 0, route: e.ticket?.route ?? 0 };
+        const childTicket = {
+          groupId: e.ticket?.groupId ?? 'summon-' + e.id,
+          unit: `${e.ticket?.unit ?? e.id}:child:${i}`,
+          bounty: 0,
+          route: e.ticket?.route ?? 0,
+          claimable: false,
+        };
         const child = new Enemy(ALL_DEFS[childProfile.type], { sampler: e.sampler, profile: childProfile, ticket: childTicket });
         child.generation = (e.generation ?? 0) + 1;
         child.dist = Math.max(0, e.dist - i * 0.5);
@@ -362,8 +370,20 @@ export class Battle {
 
   hitEnemy(e, dmg, opts) {
     if (!e?.alive) return null;
-    const applied = e.hurt(dmg, opts);
-    if (opts?.effects?.poison) applyPoison(e, opts.effects.poison);
+    const modifiers = opts?.attackModifiers || {};
+    let attackMultiplier = 1;
+    if (e.rank === 'elite') attackMultiplier += modifiers.eliteDamagePct || 0;
+    if (e.rank === 'boss' || e.def?.shape === 'boss') attackMultiplier += modifiers.bossDamagePct || 0;
+    if ((e.slowPct || 0) > 0) attackMultiplier += modifiers.slowedDamagePct || 0;
+    if ((modifiers.critChance || 0) > 0 && this.random() < modifiers.critChance) {
+      attackMultiplier *= modifiers.critMultiplier || 2;
+    }
+    const amp = damageAmplification(e, this.time, opts?.sourceTowerKey);
+    const scaledDamage = Number.isFinite(dmg) ? dmg * attackMultiplier * amp : dmg;
+    const applied = e.hurt(scaledDamage, opts);
+    if (opts?.effects?.poison) applyPoison(e, { ...opts.effects.poison,
+      sourceTowerId: opts.sourceTowerId, sourceTowerKey: opts.sourceTowerKey, skillTier: opts.skillTier });
+    if (opts?.effects?.slow) e.applySlow?.(opts.effects.slow.pct, opts.effects.slow.dur);
     if (applied > 0) this.hooks.onHit?.(e, applied, e.lastDamage);
     if (e.alive && e.hp <= 0) this.kill(e);
     return e.lastDamage;
@@ -404,7 +424,8 @@ export class Battle {
     mesh.add(surface, edge);
     this.scene.add(mesh);
     const field = { sourceId: tower.id, mesh, pos: mesh.position, radius: r, remaining: Math.min(8, duration),
-      tick: 0.75, poison: { ...poison }, targetLimit: Math.min(12, Math.floor(targetLimit)) };
+      tick: 0.75, poison: { ...poison, sourceTowerId: tower.id, sourceTowerKey: tower.key, skillTier: 'ultimate' },
+      targetLimit: Math.min(12, Math.floor(targetLimit)) };
     this.fields.push(field);
     this.pulseField(field);
     return true;
@@ -442,6 +463,7 @@ export class Battle {
       state: this.state,
       paused: this.paused,
       time: this.time,
+      random: this.random,
       camera: this.hooks.camera,
       fx: this.fx,
       projectiles: this.projectiles,

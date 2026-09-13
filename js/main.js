@@ -353,6 +353,7 @@ async function init() {
     hud = createHud(battle, {
       audio,
       onSpeed: () => {},
+      onMute: (muted) => save.setSetting('muted', muted),
       onQuit: () => { exitBattle(); showSelect(); },
       onPause: () => togglePause(true),
     });
@@ -398,7 +399,7 @@ async function init() {
     minimap = null;
     battle?.destroy();
     battle = null;
-    hud?.root.remove();
+    hud?.destroy?.();
     hud = null;
     preview.visible = false;
     endTutorial();

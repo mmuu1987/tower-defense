@@ -3,10 +3,15 @@
   "private": true,
   "version": "0.1.0",
   "type": "module",
-  "description": "三境守卫 —— Three.js 3D 塔防（3 世界 × 10 关）",
+  "description": "三境守卫 —— Three.js 3D 塔防（5 世界 × 10 关）",
   "scripts": {
-    "test": "node --test tools/maps.test.mjs tools/combat.test.mjs tools/growth.test.mjs",
+    "test": "node --test tools/*.test.mjs",
+    "build": "npm test && node tools/build-dist.mjs",
+    "balance": "node tools/simulate-balance.mjs",
     "start": "node tools/serve.mjs",
     "assets": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/download-assets.ps1"
+  },
+  "devDependencies": {
+    "three": "0.160.0"
   }
 }

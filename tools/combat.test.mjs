@@ -9,6 +9,7 @@ import { TOWER_DEFS, towerCost } from '../js/game/towers.js';
 import { buildLevel } from '../js/game/levelgen.js';
 import { createMapLayout } from '../js/game/map-layout.js';
 import { enemyProfile } from '../js/game/enemy-stats.js';
+import { formatDamage } from '../js/ui/floaters.js';
 
 function fakeEnemy({ id, x = 0, z = 0, total = 40, dist = 0, speed = 1, fly = false, alive = true, hp = 100, shield = 0, def = {} } = {}) {
   return {
@@ -17,6 +18,14 @@ function fakeEnemy({ id, x = 0, z = 0, total = 40, dist = 0, speed = 1, fly = fa
     def: { fly, ...def },
   };
 }
+
+test('damage floaters display positive damage as whole numbers', () => {
+  assert.equal(formatDamage(17.49), '17');
+  assert.equal(formatDamage(17.5), '18');
+  assert.equal(formatDamage(0.25), '1');
+  assert.equal(formatDamage(0), null);
+  assert.equal(formatDamage(NaN), null);
+});
 
 test('spatial index inserts, moves, filters and removes', () => {
   const index = new SpatialIndex(4);
@@ -117,6 +126,9 @@ test('battle kill is idempotent and death removes enemy from the index', () => {
   const ticket = { groupId: 'test:0', unit: 0, bounty: 10, route: 0 };
   const enemy = battle.spawnEnemy(profile, ticket);
   assert.equal(battle.enemyIndex.size, 1);
+  const hpBefore = enemy.hp;
+  battle.hitEnemy(enemy, 0.25, { damageType: 'true' });
+  assert.equal(enemy.hp, hpBefore - 0.25, 'battle must preserve fractional damage');
   assert.equal(battle.kill(enemy), true);
   assert.equal(battle.kills, 1);
   assert.equal(battle.enemyIndex.size, 0);

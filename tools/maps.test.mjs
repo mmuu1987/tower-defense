@@ -34,6 +34,27 @@ test('all fifty battlefields have unique authored routes and stable seeds', () =
   }
 });
 
+test('all route shapes remain distinct after translation, scale and direction normalization', () => {
+  const samples = 80;
+  const normalizedShape = (map) => {
+    const sampler = makePathSampler(createMapLayout(map).routes[0]);
+    const points = Array.from({ length: samples + 1 }, (_, i) => sampler.at(sampler.total * i / samples));
+    const center = points.reduce((sum, point) => sum.add(point), new THREE.Vector3()).multiplyScalar(1 / points.length);
+    const centered = points.map((point) => point.clone().sub(center));
+    const scale = Math.sqrt(centered.reduce((sum, point) => sum + point.lengthSq(), 0) / centered.length);
+    return centered.map((point) => point.multiplyScalar(1 / scale));
+  };
+  const distance = (a, b) => Math.sqrt(a.reduce((sum, point, index) =>
+    sum + point.distanceToSquared(b[index]), 0) / a.length);
+  const shapes = MAPS.map(normalizedShape);
+  for (let a = 0; a < MAPS.length; a++) for (let b = a + 1; b < MAPS.length; b++) {
+    const forward = distance(shapes[a], shapes[b]);
+    const reverse = distance(shapes[a], [...shapes[b]].reverse());
+    assert.ok(Math.min(forward, reverse) > 0.22,
+      `${MAPS[a].id} and ${MAPS[b].id} reuse a near-identical route shape`);
+  }
+});
+
 for (const map of MAPS) test(map.id + ': lanes, bridges, terrain and tower space remain consistent', () => {
   const layout = createMapLayout(map);
   const unavailable = new Set([...layout.pathCells, ...layout.blockedCells]);
