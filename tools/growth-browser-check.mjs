@@ -62,6 +62,8 @@ try {
       await page.locator('#p-mode').press('Space');
       assert.equal(await page.evaluate(() => window.__TD_DEBUG.battle().waveIdx), -1, 'checkbox keyboard activation must not start a wave');
       await page.locator('#p-mode').uncheck();
+      await page.waitForFunction(() => [...document.querySelectorAll('#hud-panel img, .dock-card img, .tool-icon')]
+        .every((img) => img.complete && img.naturalWidth > 0), { timeout: 15000 });
       const layout = await page.evaluate(() => {
         const rect = (sel) => document.querySelector(sel).getBoundingClientRect();
         const p = rect('#hud-panel');
@@ -71,12 +73,16 @@ try {
         const overflow = [...document.querySelectorAll('#hud-panel button, #hud-panel label, .dock-card')]
           .filter((el) => el.scrollWidth > el.clientWidth + 2).map((el) => el.textContent);
         const imgs = [...document.querySelectorAll('#hud-panel img, .dock-card img, .tool-icon')];
+        const failedAssets = imgs.filter((img) => !img.complete || img.naturalWidth <= 0)
+          .map((img) => img.currentSrc || img.src);
         return { overlap, overflow, inside: p.top >= 0 && p.right <= innerWidth && p.bottom <= innerHeight,
-          assets: imgs.every((img) => img.complete && img.naturalWidth > 0), invalid: document.querySelector('#hud-panel').textContent.includes('undefined') };
+          assets: failedAssets.length === 0, failedAssets,
+          invalid: document.querySelector('#hud-panel').textContent.includes('undefined') };
       });
       assert.deepEqual(layout.overlap, [], key + ' panel overlaps');
       assert.deepEqual(layout.overflow, [], key + ' text overflow');
-      assert.equal(layout.inside && layout.assets && !layout.invalid, true);
+      assert.equal(layout.inside && layout.assets && !layout.invalid, true,
+        `${key} invalid layout/assets: ${JSON.stringify(layout)}`);
       await page.screenshot({ path: 'logs/growth/' + viewport.width + '-' + key + '-level8.png' });
       rows.push({ viewport: viewport.width + 'x' + viewport.height, key, ...layout });
     }

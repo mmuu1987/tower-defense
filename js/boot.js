@@ -1,5 +1,11 @@
 // 启动自检：加载 three、最小渲染、错误上报到本地服务器（正式入口后续替换为 main.js）
-const post = (m) => { try { fetch('/api/log', { method: 'POST', body: String(m).slice(0, 2000) }).catch(() => {}); } catch {} };
+const post = (m) => {
+  try {
+    if (location.hostname === 'localhost' || location.hostname === '127.0.0.1' || location.hostname === '[::1]') {
+      fetch('/api/log', { method: 'POST', body: String(m).slice(0, 2000) }).catch(() => {});
+    }
+  } catch {}
+};
 window.addEventListener('error', (e) => post(`[boot-error] ${e.message} @ ${e.filename}:${e.lineno}:${e.colno}`));
 window.addEventListener('unhandledrejection', (e) => post(`[boot-rejection] ${(e.reason && (e.reason.stack || e.reason.message)) || e.reason}`));
 

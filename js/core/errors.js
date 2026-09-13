@@ -3,6 +3,7 @@ export function installErrorReporting(tag = 'td') {
   const _lastPost = {}; // 同类消息（前 60 字符）2 秒内只上报一次，防每帧错误刷爆日志
   const post = (msg) => {
     try {
+      if (location.hostname !== 'localhost' && location.hostname !== '127.0.0.1' && location.hostname !== '[::1]') return;
       const key = String(msg).slice(0, 60);
       const n = performance.now();
       if (n - (_lastPost[key] || 0) < 2000) return;

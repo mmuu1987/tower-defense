@@ -9,6 +9,13 @@ const loader = new GLTFLoader();
 const MODEL_BASE = new URL('../../assets/models/', import.meta.url);
 const cache = {};    // name -> { tpl: Group(已归一化), height: number }；失败不缓存，允许重试
 const inflight = {};
+const postLocalLog = (msg, limit = 500) => {
+  try {
+    if (location.hostname === 'localhost' || location.hostname === '127.0.0.1' || location.hostname === '[::1]') {
+      fetch('/api/log', { method: 'POST', body: String(msg).slice(0, limit) }).catch(() => {});
+    }
+  } catch {}
+};
 
 export function loadOne(name, timeoutMs = 20000) {
   // Node/模拟器环境：无 location（页面上下文），直接返回失败占位，走程序化回退
@@ -21,7 +28,7 @@ export function loadOne(name, timeoutMs = 20000) {
       const report = (why, err) => {
         const msg = `[model] ${name} ${why}${err ? ': ' + ((err && (err.message || err)) || err) : ''}`;
         console.error(msg);
-        try { fetch('/api/log', { method: 'POST', body: msg.slice(0, 500) }).catch(() => {}); } catch {}
+        postLocalLog(msg);
       };
       const finish = (val) => {
         if (settled) return;
@@ -81,7 +88,7 @@ export function preloadModels(names) {
     const okCount = rs.filter(Boolean).length;
     const msg = `[model] preload done: ${okCount}/${names.length} ok in ${(performance.now() - t0).toFixed(0)}ms`;
     console.log(msg);
-    try { fetch('/api/log', { method: 'POST', body: msg }).catch(() => {}); } catch {}
+    postLocalLog(msg, 2000);
     return names.filter((_, i) => rs[i]);
   });
 }
@@ -158,7 +165,7 @@ export function loadEnemyTemplate(name, timeoutMs = 20000) {
       const report = (why, err) => {
         const msg = `[enemy-model] ${name} ${why}${err ? ': ' + ((err && (err.message || err)) || err) : ''}`;
         console.error(msg);
-        try { fetch('/api/log', { method: 'POST', body: msg.slice(0, 400) }).catch(() => {}); } catch {}
+        postLocalLog(msg, 400);
       };
       const finish = (val) => {
         if (settled) return;

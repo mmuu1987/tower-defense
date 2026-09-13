@@ -23,8 +23,10 @@
     // 最早期的错误捕获：模块加载失败也能上报
     window.addEventListener('error', function (e) {
       try {
-        fetch('/api/log', { method: 'POST',
-          body: '[html-error] ' + e.message + ' @ ' + (e.filename || '') + ':' + e.lineno + ':' + e.colno });
+        if (location.hostname === 'localhost' || location.hostname === '127.0.0.1' || location.hostname === '[::1]') {
+          fetch('/api/log', { method: 'POST',
+            body: '[html-error] ' + e.message + ' @ ' + (e.filename || '') + ':' + e.lineno + ':' + e.colno });
+        }
       } catch {}
     }, true);
   </script>
