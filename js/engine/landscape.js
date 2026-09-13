@@ -162,8 +162,11 @@ export function createLandscape({ theme, layout, rng }) {
     group.add(waterfall);
   }
 
+  const flowSpeed = hot ? 0.025 : frozen ? 0.035 : dry ? 0.055 : theme.id === 'graveyard' ? 0.065 : 0.08;
   const update = (time) => {
-    flow.offset.y = dry || frozen ? 0 : -time * (hot ? 0.025 : 0.08);
+    // Every themed channel is animated. Frost moves more slowly like meltwater,
+    // while the sand channel keeps a visible but restrained muddy-current drift.
+    flow.offset.y = -time * flowSpeed;
     if (hot) waterMat.emissiveIntensity = 1.3 + Math.sin(time * 1.1) * 0.12;
     for (let i = 0; i < count; i++) {
       const j = i * 3, speed = speeds[i];

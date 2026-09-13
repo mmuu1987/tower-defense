@@ -50,8 +50,12 @@ try {
         const motes = t.group.getObjectByName('snowfall') || t.group.getObjectByName('embers') ||
           t.group.getObjectByName('sand-drift') || t.group.getObjectByName('ambient-motes');
         const before = Array.from(motes.geometry.attributes.position.array.slice(0,9));
+        const water = t.group.getObjectByName('river') || t.group.getObjectByName('lava-flow') ||
+          t.group.getObjectByName('glacier-crevasse') || t.group.getObjectByName('dry-riverbed');
+        const waterOffsetBefore = water.material.map.offset.y;
         t.update(123);
         const after = Array.from(motes.geometry.attributes.position.array.slice(0,9));
+        const waterAnimated = water.material.map.offset.y !== waterOffsetBefore;
         const deck = t.group.getObjectByName('bridge-decks');
         const inverseDecks = [];
         for (let i = 0; i < deck.count; i++) {
@@ -71,7 +75,7 @@ try {
           maxX: Math.max(...samples.map((p) => Math.abs(p.x))), maxY: Math.max(...samples.map((p) => Math.abs(p.y))),
           bridges: t.group.getObjectByName('bridge-decks')?.count ?? 0,
           decor: t.decor.group.children.length, animated: JSON.stringify(before) !== JSON.stringify(after),
-          deckGaps, textures: d.renderer.info.memory.textures, geometry: d.renderer.info.memory.geometries };
+          waterAnimated, deckGaps, textures: d.renderer.info.memory.textures, geometry: d.renderer.info.memory.geometries };
       });
       assert.ok(data.finite, data.id + ' finite geometry');
       assert.deepEqual(data.size, [42,28]);
@@ -79,6 +83,7 @@ try {
       assert.ok(data.bright > 0.55 && data.colors >= 35 && data.deviation > 8, JSON.stringify(data));
       assert.ok(data.maxX < 1 && data.maxY < 0.94, 'route framing ' + JSON.stringify(data));
       assert.ok(data.bridges > 0 && data.decor > 15 && data.animated, 'landscape assets ' + JSON.stringify(data));
+      assert.ok(data.waterAnimated, 'themed water flow must animate ' + data.id);
       assert.equal(data.deckGaps, 0, 'continuous bridge deck ' + data.id);
       await page.screenshot({ path: 'logs/maps/' + viewport.width + '-' + data.id + '.png' });
       rows.push({ viewport: viewport.width + 'x' + viewport.height, ...data });
