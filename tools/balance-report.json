@@ -56,7 +56,7 @@
       },
       "waves": 6,
       "win": true,
-      "time": 177.53333333336676,
+      "time": 185.58333333337316,
       "kills": 44,
       "leaks": 0,
       "startGold": 400,
@@ -119,7 +119,7 @@
       },
       "waves": 6,
       "win": true,
-      "time": 284.066666666737,
+      "time": 283.5166666667375,
       "kills": 48,
       "leaks": 0,
       "startGold": 430,
@@ -182,7 +182,7 @@
       },
       "waves": 6,
       "win": true,
-      "time": 171.71666666669546,
+      "time": 175.51666666669848,
       "kills": 51,
       "leaks": 0,
       "startGold": 460,
@@ -245,7 +245,7 @@
       },
       "waves": 6,
       "win": true,
-      "time": 82.51666666666327,
+      "time": 85.18333333332978,
       "kills": 57,
       "leaks": 0,
       "startGold": 630,
@@ -308,7 +308,7 @@
       },
       "waves": 6,
       "win": true,
-      "time": 159.86666666668603,
+      "time": 168.26666666669271,
       "kills": 50,
       "leaks": 0,
       "startGold": 520,
@@ -320,11 +320,11 @@
       "level": 6,
       "towers": {
         "arrow": {
-          "sig": 0,
+          "sig": 1,
           "ult": 0,
           "sigDmg": 0,
           "ultDmg": 0,
-          "casts": 0
+          "casts": 1
         },
         "cannon": {
           "sig": 0,
@@ -371,7 +371,7 @@
       },
       "waves": 7,
       "win": true,
-      "time": 156.3166666666832,
+      "time": 162.1333333333545,
       "kills": 65,
       "leaks": 0,
       "startGold": 550,
@@ -385,7 +385,7 @@
         "arrow": {
           "sig": 1,
           "ult": 0,
-          "sigDmg": 79.32,
+          "sigDmg": 70.32,
           "ultDmg": 0,
           "casts": 1
         },
@@ -434,7 +434,7 @@
       },
       "waves": 7,
       "win": true,
-      "time": 243.8500000000862,
+      "time": 246.78333333342187,
       "kills": 65,
       "leaks": 0,
       "startGold": 720,
@@ -448,7 +448,7 @@
         "arrow": {
           "sig": 1,
           "ult": 0,
-          "sigDmg": 84,
+          "sigDmg": 34.64,
           "ultDmg": 0,
           "casts": 1
         },
@@ -497,7 +497,7 @@
       },
       "waves": 7,
       "win": true,
-      "time": 156.066666666683,
+      "time": 164.7166666666899,
       "kills": 73,
       "leaks": 0,
       "startGold": 610,
@@ -509,11 +509,11 @@
       "level": 9,
       "towers": {
         "arrow": {
-          "sig": 1,
+          "sig": 2,
           "ult": 0,
-          "sigDmg": 9.68,
+          "sigDmg": 14.68,
           "ultDmg": 0,
-          "casts": 1
+          "casts": 2
         },
         "cannon": {
           "sig": 0,
@@ -560,7 +560,7 @@
       },
       "waves": 7,
       "win": true,
-      "time": 190.9500000000441,
+      "time": 200.18333333338478,
       "kills": 65,
       "leaks": 0,
       "startGold": 780,
@@ -574,7 +574,7 @@
         "arrow": {
           "sig": 5,
           "ult": 0,
-          "sigDmg": 273.28000000000003,
+          "sigDmg": 256.28000000000003,
           "ultDmg": 0,
           "casts": 5
         },
@@ -586,11 +586,11 @@
           "casts": 0
         },
         "frost": {
-          "sig": 7,
+          "sig": 6,
           "ult": 0,
-          "sigDmg": 50.14320000000001,
+          "sigDmg": 13.7872,
           "ultDmg": 0,
-          "casts": 7
+          "casts": 6
         },
         "tesla": {
           "sig": 0,
@@ -609,7 +609,7 @@
         "venom": {
           "sig": 1,
           "ult": 0,
-          "sigDmg": 15.799999999999997,
+          "sigDmg": 20.799999999999997,
           "ultDmg": 0,
           "casts": 1
         },
@@ -623,7 +623,7 @@
       },
       "waves": 8,
       "win": true,
-      "time": 237.58333333341454,
+      "time": 236.1333333334134,
       "kills": 99,
       "leaks": 1,
       "startGold": 810,
@@ -644,7 +644,7 @@
         "cannon": {
           "sig": 1,
           "ult": 0,
-          "sigDmg": 193.47000000000003,
+          "sigDmg": 222.46999999999997,
           "ultDmg": 0,
           "casts": 1
         },
@@ -686,7 +686,7 @@
       },
       "waves": 8,
       "win": true,
-      "time": 213.68333333339552,
+      "time": 215.15000000006336,
       "kills": 49,
       "leaks": 0,
       "startGold": 620,
@@ -700,7 +700,7 @@
         "arrow": {
           "sig": 2,
           "ult": 0,
-          "sigDmg": 22.784799999999983,
+          "sigDmg": 32.69895999999999,
           "ultDmg": 0,
           "casts": 2
         },
@@ -735,7 +735,7 @@
         "venom": {
           "sig": 2,
           "ult": 0,
-          "sigDmg": 96.19680000000001,
+          "sigDmg": 87.5704,
           "ultDmg": 0,
           "casts": 2
         },
@@ -749,7 +749,7 @@
       },
       "waves": 8,
       "win": true,
-      "time": 293.1000000000621,
+      "time": 295.21666666672684,
       "kills": 60,
       "leaks": 0,
       "startGold": 790,
@@ -768,25 +768,25 @@
           "casts": 0
         },
         "cannon": {
-          "sig": 0,
+          "sig": 2,
           "ult": 0,
-          "sigDmg": 0,
+          "sigDmg": 83.80000000000004,
           "ultDmg": 0,
-          "casts": 0
+          "casts": 2
         },
         "frost": {
-          "sig": 5,
+          "sig": 6,
           "ult": 0,
           "sigDmg": 0,
           "ultDmg": 0,
-          "casts": 5
+          "casts": 6
         },
         "tesla": {
-          "sig": 1,
+          "sig": 2,
           "ult": 0,
           "sigDmg": 0,
           "ultDmg": 0,
-          "casts": 1
+          "casts": 2
         },
         "sniper": {
           "sig": 0,
@@ -812,7 +812,7 @@
       },
       "waves": 8,
       "win": true,
-      "time": 235.06666666674587,
+      "time": 258.85000000009325,
       "kills": 71,
       "leaks": 0,
       "startGold": 680,
@@ -854,14 +854,14 @@
         "sniper": {
           "sig": 1,
           "ult": 0,
-          "sigDmg": 85.10159999999999,
+          "sigDmg": 89.9936,
           "ultDmg": 0,
           "casts": 1
         },
         "venom": {
           "sig": 5,
           "ult": 0,
-          "sigDmg": 327.6744,
+          "sigDmg": 285.06272000000007,
           "ultDmg": 0,
           "casts": 5
         },
@@ -875,7 +875,7 @@
       },
       "waves": 8,
       "win": true,
-      "time": 354.9666666666725,
+      "time": 355.9666666666716,
       "kills": 79,
       "leaks": 0,
       "startGold": 850,
@@ -887,11 +887,11 @@
       "level": 5,
       "towers": {
         "arrow": {
-          "sig": 6,
+          "sig": 8,
           "ult": 0,
-          "sigDmg": 505.3872,
+          "sigDmg": 370.19840000000005,
           "ultDmg": 0,
-          "casts": 6
+          "casts": 8
         },
         "cannon": {
           "sig": 0,
@@ -924,7 +924,7 @@
         "venom": {
           "sig": 3,
           "ult": 0,
-          "sigDmg": 113.4312,
+          "sigDmg": 124.87808,
           "ultDmg": 0,
           "casts": 3
         },
@@ -938,7 +938,7 @@
       },
       "waves": 9,
       "win": true,
-      "time": 169.98333333336075,
+      "time": 172.63333333336286,
       "kills": 102,
       "leaks": 0,
       "startGold": 740,
@@ -952,14 +952,14 @@
         "arrow": {
           "sig": 9,
           "ult": 0,
-          "sigDmg": 420.2800000000001,
+          "sigDmg": 338.6757600000001,
           "ultDmg": 0,
           "casts": 9
         },
         "cannon": {
           "sig": 1,
           "ult": 0,
-          "sigDmg": 298.32,
+          "sigDmg": 268.32,
           "ultDmg": 0,
           "casts": 1
         },
@@ -971,23 +971,23 @@
           "casts": 14
         },
         "tesla": {
-          "sig": 12,
+          "sig": 13,
           "ult": 0,
           "sigDmg": 0,
           "ultDmg": 0,
-          "casts": 12
+          "casts": 13
         },
         "sniper": {
-          "sig": 0,
+          "sig": 1,
           "ult": 0,
-          "sigDmg": 0,
+          "sigDmg": 138.85679999999985,
           "ultDmg": 0,
-          "casts": 0
+          "casts": 1
         },
         "venom": {
           "sig": 7,
           "ult": 0,
-          "sigDmg": 489.66720000000015,
+          "sigDmg": 432.03455999999966,
           "ultDmg": 0,
           "casts": 7
         },
@@ -1001,7 +1001,7 @@
       },
       "waves": 9,
       "win": true,
-      "time": 391.61666666663916,
+      "time": 399.0999999999657,
       "kills": 99,
       "leaks": 0,
       "startGold": 770,
@@ -1013,18 +1013,81 @@
       "level": 7,
       "towers": {
         "arrow": {
+          "sig": 3,
+          "ult": 0,
+          "sigDmg": 284.48,
+          "ultDmg": 0,
+          "casts": 3
+        },
+        "cannon": {
           "sig": 2,
           "ult": 0,
-          "sigDmg": 223.20000000000002,
+          "sigDmg": 674.48,
           "ultDmg": 0,
           "casts": 2
         },
-        "cannon": {
+        "frost": {
+          "sig": 7,
+          "ult": 0,
+          "sigDmg": 0,
+          "ultDmg": 0,
+          "casts": 7
+        },
+        "tesla": {
+          "sig": 5,
+          "ult": 0,
+          "sigDmg": 0,
+          "ultDmg": 0,
+          "casts": 5
+        },
+        "sniper": {
           "sig": 3,
           "ult": 0,
-          "sigDmg": 918.3300000000002,
+          "sigDmg": 622,
           "ultDmg": 0,
           "casts": 3
+        },
+        "venom": {
+          "sig": 2,
+          "ult": 0,
+          "sigDmg": 25.239999999999995,
+          "ultDmg": 0,
+          "casts": 2
+        },
+        "beacon": {
+          "sig": 0,
+          "ult": 0,
+          "sigDmg": 0,
+          "ultDmg": 0,
+          "casts": 0
+        }
+      },
+      "waves": 9,
+      "win": true,
+      "time": 253.93333333342756,
+      "kills": 87,
+      "leaks": 2,
+      "startGold": 940,
+      "finalGold": 636,
+      "invested": 7095
+    },
+    {
+      "world": 2,
+      "level": 8,
+      "towers": {
+        "arrow": {
+          "sig": 6,
+          "ult": 0,
+          "sigDmg": 168.95999999999998,
+          "ultDmg": 0,
+          "casts": 6
+        },
+        "cannon": {
+          "sig": 0,
+          "ult": 0,
+          "sigDmg": 0,
+          "ultDmg": 0,
+          "casts": 0
         },
         "frost": {
           "sig": 6,
@@ -1041,72 +1104,9 @@
           "casts": 5
         },
         "sniper": {
-          "sig": 3,
-          "ult": 0,
-          "sigDmg": 605,
-          "ultDmg": 0,
-          "casts": 3
-        },
-        "venom": {
-          "sig": 0,
-          "ult": 0,
-          "sigDmg": 0,
-          "ultDmg": 0,
-          "casts": 0
-        },
-        "beacon": {
-          "sig": 0,
-          "ult": 0,
-          "sigDmg": 0,
-          "ultDmg": 0,
-          "casts": 0
-        }
-      },
-      "waves": 9,
-      "win": true,
-      "time": 235.1166666667459,
-      "kills": 88,
-      "leaks": 1,
-      "startGold": 940,
-      "finalGold": 742,
-      "invested": 7095
-    },
-    {
-      "world": 2,
-      "level": 8,
-      "towers": {
-        "arrow": {
-          "sig": 7,
-          "ult": 0,
-          "sigDmg": 187.394,
-          "ultDmg": 0,
-          "casts": 7
-        },
-        "cannon": {
-          "sig": 0,
-          "ult": 0,
-          "sigDmg": 0,
-          "ultDmg": 0,
-          "casts": 0
-        },
-        "frost": {
-          "sig": 6,
-          "ult": 0,
-          "sigDmg": 0,
-          "ultDmg": 0,
-          "casts": 6
-        },
-        "tesla": {
-          "sig": 4,
-          "ult": 0,
-          "sigDmg": 0,
-          "ultDmg": 0,
-          "casts": 4
-        },
-        "sniper": {
           "sig": 2,
           "ult": 0,
-          "sigDmg": 78.8496,
+          "sigDmg": 85.6592,
           "ultDmg": 0,
           "casts": 2
         },
@@ -1127,7 +1127,7 @@
       },
       "waves": 9,
       "win": true,
-      "time": 198.1833333333832,
+      "time": 227.1666666667396,
       "kills": 95,
       "leaks": 0,
       "startGold": 830,
@@ -1139,46 +1139,46 @@
       "level": 9,
       "towers": {
         "arrow": {
-          "sig": 4,
+          "sig": 2,
           "ult": 0,
-          "sigDmg": 0,
+          "sigDmg": 67.68,
           "ultDmg": 0,
-          "casts": 4
+          "casts": 2
         },
         "cannon": {
-          "sig": 4,
+          "sig": 0,
           "ult": 0,
-          "sigDmg": 921.8016000000001,
+          "sigDmg": 0,
           "ultDmg": 0,
-          "casts": 4
+          "casts": 0
         },
         "frost": {
-          "sig": 17,
+          "sig": 8,
           "ult": 0,
           "sigDmg": 0,
           "ultDmg": 0,
-          "casts": 17
+          "casts": 8
         },
         "tesla": {
-          "sig": 14,
-          "ult": 0,
-          "sigDmg": 0,
-          "ultDmg": 0,
-          "casts": 14
-        },
-        "sniper": {
           "sig": 3,
           "ult": 0,
-          "sigDmg": 45.395,
+          "sigDmg": 0,
           "ultDmg": 0,
           "casts": 3
         },
-        "venom": {
-          "sig": 6,
+        "sniper": {
+          "sig": 0,
           "ult": 0,
-          "sigDmg": 540.2952,
+          "sigDmg": 0,
           "ultDmg": 0,
-          "casts": 6
+          "casts": 0
+        },
+        "venom": {
+          "sig": 2,
+          "ult": 0,
+          "sigDmg": 133.1092,
+          "ultDmg": 0,
+          "casts": 2
         },
         "beacon": {
           "sig": 0,
@@ -1188,60 +1188,60 @@
           "casts": 0
         }
       },
-      "waves": 10,
-      "win": true,
-      "time": 511.71666666652993,
-      "kills": 116,
-      "leaks": 19,
+      "waves": 7,
+      "win": false,
+      "time": 361.6333333333331,
+      "kills": 64,
+      "leaks": 20,
       "startGold": 1000,
-      "finalGold": 869,
-      "invested": 7915
+      "finalGold": 332,
+      "invested": 5075
     },
     {
       "world": 2,
       "level": 10,
       "towers": {
         "arrow": {
-          "sig": 10,
+          "sig": 9,
           "ult": 0,
-          "sigDmg": 524.3668,
+          "sigDmg": 278.9376,
           "ultDmg": 0,
-          "casts": 10
+          "casts": 9
         },
         "cannon": {
-          "sig": 2,
+          "sig": 4,
           "ult": 0,
-          "sigDmg": 253.92,
+          "sigDmg": 895.1294000000004,
           "ultDmg": 0,
-          "casts": 2
+          "casts": 4
         },
         "frost": {
-          "sig": 7,
+          "sig": 13,
           "ult": 0,
-          "sigDmg": 227.17119999999997,
+          "sigDmg": 203.696,
           "ultDmg": 0,
-          "casts": 7
+          "casts": 13
         },
         "tesla": {
-          "sig": 6,
+          "sig": 13,
           "ult": 0,
           "sigDmg": 0,
           "ultDmg": 0,
-          "casts": 6
+          "casts": 13
         },
         "sniper": {
-          "sig": 5,
+          "sig": 4,
           "ult": 0,
-          "sigDmg": 1303.6888,
+          "sigDmg": 1132.0888,
           "ultDmg": 0,
-          "casts": 5
+          "casts": 4
         },
         "venom": {
-          "sig": 0,
+          "sig": 1,
           "ult": 0,
-          "sigDmg": 0,
+          "sigDmg": 89.39199999999998,
           "ultDmg": 0,
-          "casts": 0
+          "casts": 1
         },
         "beacon": {
           "sig": 0,
@@ -1253,11 +1253,11 @@
       },
       "waves": 10,
       "win": true,
-      "time": 178.9166666667012,
-      "kills": 148,
-      "leaks": 0,
+      "time": 283.4833333334042,
+      "kills": 143,
+      "leaks": 1,
       "startGold": 890,
-      "finalGold": 1124,
+      "finalGold": 590,
       "invested": 8835
     },
     {
@@ -1267,7 +1267,7 @@
         "arrow": {
           "sig": 1,
           "ult": 0,
-          "sigDmg": 76.44,
+          "sigDmg": 67.44,
           "ultDmg": 0,
           "casts": 1
         },
@@ -1279,44 +1279,44 @@
           "casts": 0
         },
         "frost": {
-          "sig": 11,
+          "sig": 12,
           "ult": 0,
-          "sigDmg": 373.31600000000003,
+          "sigDmg": 261.3087999999999,
           "ultDmg": 0,
-          "casts": 11
+          "casts": 12
         },
         "tesla": {
-          "sig": 10,
+          "sig": 12,
           "ult": 0,
           "sigDmg": 0,
           "ultDmg": 0,
-          "casts": 10
+          "casts": 12
         },
         "sniper": {
-          "sig": 0,
-          "ult": 0,
-          "sigDmg": 0,
-          "ultDmg": 0,
-          "casts": 0
-        },
-        "venom": {
-          "sig": 6,
-          "ult": 0,
-          "sigDmg": 742.4007999999999,
-          "ultDmg": 0,
-          "casts": 6
-        },
-        "beacon": {
           "sig": 2,
           "ult": 0,
-          "sigDmg": 0,
+          "sigDmg": 101,
           "ultDmg": 0,
           "casts": 2
+        },
+        "venom": {
+          "sig": 8,
+          "ult": 0,
+          "sigDmg": 670.6696800000007,
+          "ultDmg": 0,
+          "casts": 8
+        },
+        "beacon": {
+          "sig": 4,
+          "ult": 0,
+          "sigDmg": 0,
+          "ultDmg": 0,
+          "casts": 4
         }
       },
       "waves": 10,
       "win": true,
-      "time": 286.58333333340136,
+      "time": 333.53333333335866,
       "kills": 83,
       "leaks": 0,
       "startGold": 980,
@@ -1328,23 +1328,23 @@
       "level": 2,
       "towers": {
         "arrow": {
-          "sig": 8,
+          "sig": 10,
           "ult": 0,
-          "sigDmg": 356.86480000000006,
+          "sigDmg": 541.5952,
           "ultDmg": 0,
-          "casts": 8
+          "casts": 10
         },
         "cannon": {
-          "sig": 0,
+          "sig": 2,
           "ult": 0,
-          "sigDmg": 0,
+          "sigDmg": 649.6856000000001,
           "ultDmg": 0,
-          "casts": 0
+          "casts": 2
         },
         "frost": {
           "sig": 12,
           "ult": 0,
-          "sigDmg": 219.86799999999994,
+          "sigDmg": 189.62719999999996,
           "ultDmg": 0,
           "casts": 12
         },
@@ -1358,7 +1358,7 @@
         "sniper": {
           "sig": 5,
           "ult": 0,
-          "sigDmg": 234.0399999999999,
+          "sigDmg": 281.1920000000001,
           "ultDmg": 0,
           "casts": 5
         },
@@ -1379,7 +1379,7 @@
       },
       "waves": 10,
       "win": true,
-      "time": 337.1666666666887,
+      "time": 339.51666666668655,
       "kills": 97,
       "leaks": 0,
       "startGold": 870,
@@ -1393,7 +1393,7 @@
         "arrow": {
           "sig": 9,
           "ult": 0,
-          "sigDmg": 895.4,
+          "sigDmg": 811.92,
           "ultDmg": 0,
           "casts": 9
         },
@@ -1405,11 +1405,11 @@
           "casts": 0
         },
         "frost": {
-          "sig": 14,
+          "sig": 12,
           "ult": 0,
-          "sigDmg": 16.4424,
+          "sigDmg": 38.576,
           "ultDmg": 0,
-          "casts": 14
+          "casts": 12
         },
         "tesla": {
           "sig": 11,
@@ -1421,14 +1421,14 @@
         "sniper": {
           "sig": 4,
           "ult": 0,
-          "sigDmg": 49.87600000000013,
+          "sigDmg": 143.51240000000027,
           "ultDmg": 0,
           "casts": 4
         },
         "venom": {
           "sig": 5,
           "ult": 0,
-          "sigDmg": 239.7711999999999,
+          "sigDmg": 331.05776,
           "ultDmg": 0,
           "casts": 5
         },
@@ -1442,11 +1442,11 @@
       },
       "waves": 10,
       "win": true,
-      "time": 389.73333333330754,
-      "kills": 91,
-      "leaks": 0,
+      "time": 420.7833333332793,
+      "kills": 86,
+      "leaks": 5,
       "startGold": 900,
-      "finalGold": 1070,
+      "finalGold": 570,
       "invested": 9915
     },
     {
@@ -1454,46 +1454,46 @@
       "level": 4,
       "towers": {
         "arrow": {
-          "sig": 10,
+          "sig": 11,
           "ult": 0,
-          "sigDmg": 685.84,
+          "sigDmg": 848.9976000000001,
           "ultDmg": 0,
-          "casts": 10
+          "casts": 11
         },
         "cannon": {
           "sig": 6,
           "ult": 0,
-          "sigDmg": 1800.6799999999994,
+          "sigDmg": 1625.6799999999994,
           "ultDmg": 0,
           "casts": 6
         },
         "frost": {
-          "sig": 16,
+          "sig": 17,
           "ult": 0,
-          "sigDmg": 255.07439999999997,
+          "sigDmg": 203.31359999999998,
           "ultDmg": 0,
-          "casts": 16
+          "casts": 17
         },
         "tesla": {
-          "sig": 15,
+          "sig": 16,
           "ult": 0,
           "sigDmg": 0,
           "ultDmg": 0,
-          "casts": 15
+          "casts": 16
         },
         "sniper": {
-          "sig": 4,
+          "sig": 8,
           "ult": 0,
-          "sigDmg": 530.8000000000001,
+          "sigDmg": 705.9712000000001,
           "ultDmg": 0,
-          "casts": 4
+          "casts": 8
         },
         "venom": {
-          "sig": 6,
+          "sig": 7,
           "ult": 0,
-          "sigDmg": 486.4888000000001,
+          "sigDmg": 873.2915199999997,
           "ultDmg": 0,
-          "casts": 6
+          "casts": 7
         },
         "beacon": {
           "sig": 7,
@@ -1505,7 +1505,7 @@
       },
       "waves": 11,
       "win": true,
-      "time": 323.7833333333675,
+      "time": 348.93333333334465,
       "kills": 91,
       "leaks": 0,
       "startGold": 1070,
@@ -1517,25 +1517,25 @@
       "level": 5,
       "towers": {
         "arrow": {
-          "sig": 2,
+          "sig": 4,
           "ult": 0,
-          "sigDmg": 176.35760000000047,
+          "sigDmg": 226.18880000000001,
           "ultDmg": 0,
-          "casts": 2
+          "casts": 4
         },
         "cannon": {
           "sig": 7,
           "ult": 0,
-          "sigDmg": 3216.7999999999984,
+          "sigDmg": 2912.9999999999986,
           "ultDmg": 0,
           "casts": 7
         },
         "frost": {
-          "sig": 18,
+          "sig": 20,
           "ult": 0,
-          "sigDmg": 70.1296,
+          "sigDmg": 57.25920000000001,
           "ultDmg": 0,
-          "casts": 18
+          "casts": 20
         },
         "tesla": {
           "sig": 20,
@@ -1545,11 +1545,11 @@
           "casts": 20
         },
         "sniper": {
-          "sig": 7,
+          "sig": 8,
           "ult": 0,
-          "sigDmg": 731.1291999999861,
+          "sigDmg": 959.7457333333246,
           "ultDmg": 0,
-          "casts": 7
+          "casts": 8
         },
         "venom": {
           "sig": 0,
@@ -1568,7 +1568,7 @@
       },
       "waves": 11,
       "win": true,
-      "time": 481.63333333322396,
+      "time": 529.0833333331808,
       "kills": 105,
       "leaks": 0,
       "startGold": 960,
@@ -1580,11 +1580,11 @@
       "level": 6,
       "towers": {
         "arrow": {
-          "sig": 7,
+          "sig": 10,
           "ult": 0,
-          "sigDmg": 447.5002,
+          "sigDmg": 527.3292,
           "ultDmg": 0,
-          "casts": 7
+          "casts": 10
         },
         "cannon": {
           "sig": 0,
@@ -1594,30 +1594,30 @@
           "casts": 0
         },
         "frost": {
-          "sig": 10,
+          "sig": 11,
           "ult": 0,
-          "sigDmg": 82.4632,
+          "sigDmg": 57.14800000000008,
           "ultDmg": 0,
-          "casts": 10
+          "casts": 11
         },
         "tesla": {
-          "sig": 10,
+          "sig": 11,
           "ult": 0,
           "sigDmg": 0,
           "ultDmg": 0,
-          "casts": 10
+          "casts": 11
         },
         "sniper": {
           "sig": 8,
           "ult": 0,
-          "sigDmg": 2518.956,
+          "sigDmg": 2441.60904,
           "ultDmg": 0,
           "casts": 8
         },
         "venom": {
           "sig": 7,
           "ult": 0,
-          "sigDmg": 1032.3313999999993,
+          "sigDmg": 781.518240000001,
           "ultDmg": 0,
           "casts": 7
         },
@@ -1631,7 +1631,7 @@
       },
       "waves": 11,
       "win": true,
-      "time": 229.71666666674162,
+      "time": 238.21666666674838,
       "kills": 105,
       "leaks": 0,
       "startGold": 990,
@@ -1645,42 +1645,42 @@
         "arrow": {
           "sig": 12,
           "ult": 0,
-          "sigDmg": 1160.48,
+          "sigDmg": 1068.92,
           "ultDmg": 0,
           "casts": 12
         },
         "cannon": {
-          "sig": 1,
+          "sig": 3,
           "ult": 0,
-          "sigDmg": 76.12000000000006,
+          "sigDmg": 271.2400000000004,
           "ultDmg": 0,
-          "casts": 1
+          "casts": 3
         },
         "frost": {
-          "sig": 31,
+          "sig": 34,
           "ult": 0,
-          "sigDmg": 0,
+          "sigDmg": 13.44,
           "ultDmg": 0,
-          "casts": 31
+          "casts": 34
         },
         "tesla": {
-          "sig": 29,
+          "sig": 32,
           "ult": 0,
           "sigDmg": 0,
           "ultDmg": 0,
-          "casts": 29
+          "casts": 32
         },
         "sniper": {
-          "sig": 12,
+          "sig": 13,
           "ult": 0,
-          "sigDmg": 2995.1056,
+          "sigDmg": 2965.5112,
           "ultDmg": 0,
-          "casts": 12
+          "casts": 13
         },
         "venom": {
           "sig": 7,
           "ult": 0,
-          "sigDmg": 555.3991999999997,
+          "sigDmg": 418.93311999999986,
           "ultDmg": 0,
           "casts": 7
         },
@@ -1694,11 +1694,11 @@
       },
       "waves": 11,
       "win": true,
-      "time": 680.916666666376,
-      "kills": 104,
-      "leaks": 3,
+      "time": 755.0666666663086,
+      "kills": 103,
+      "leaks": 4,
       "startGold": 1160,
-      "finalGold": 1262,
+      "finalGold": 964,
       "invested": 12215
     },
     {
@@ -1706,25 +1706,88 @@
       "level": 8,
       "towers": {
         "arrow": {
-          "sig": 18,
+          "sig": 19,
           "ult": 0,
-          "sigDmg": 2147.691999999999,
+          "sigDmg": 1827.3919999999987,
           "ultDmg": 0,
-          "casts": 18
+          "casts": 19
         },
         "cannon": {
+          "sig": 3,
+          "ult": 0,
+          "sigDmg": 828.6143999999997,
+          "ultDmg": 0,
+          "casts": 3
+        },
+        "frost": {
+          "sig": 31,
+          "ult": 0,
+          "sigDmg": 433.87200000000007,
+          "ultDmg": 0,
+          "casts": 31
+        },
+        "tesla": {
+          "sig": 27,
+          "ult": 0,
+          "sigDmg": 0,
+          "ultDmg": 0,
+          "casts": 27
+        },
+        "sniper": {
           "sig": 1,
           "ult": 0,
-          "sigDmg": 155.88,
+          "sigDmg": 0,
           "ultDmg": 0,
           "casts": 1
         },
-        "frost": {
-          "sig": 25,
+        "venom": {
+          "sig": 6,
           "ult": 0,
-          "sigDmg": 475.73039999999986,
+          "sigDmg": 378.8730400000001,
           "ultDmg": 0,
-          "casts": 25
+          "casts": 6
+        },
+        "beacon": {
+          "sig": 1,
+          "ult": 0,
+          "sigDmg": 0,
+          "ultDmg": 0,
+          "casts": 1
+        }
+      },
+      "waves": 12,
+      "win": true,
+      "time": 653.7833333330674,
+      "kills": 149,
+      "leaks": 4,
+      "startGold": 1050,
+      "finalGold": 230,
+      "invested": 14725
+    },
+    {
+      "world": 3,
+      "level": 9,
+      "towers": {
+        "arrow": {
+          "sig": 19,
+          "ult": 0,
+          "sigDmg": 1521.2494272000001,
+          "ultDmg": 0,
+          "casts": 19
+        },
+        "cannon": {
+          "sig": 5,
+          "ult": 0,
+          "sigDmg": 1244.9563333333329,
+          "ultDmg": 0,
+          "casts": 5
+        },
+        "frost": {
+          "sig": 27,
+          "ult": 0,
+          "sigDmg": 154.82879999999997,
+          "ultDmg": 0,
+          "casts": 27
         },
         "tesla": {
           "sig": 28,
@@ -1734,81 +1797,333 @@
           "casts": 28
         },
         "sniper": {
-          "sig": 1,
+          "sig": 15,
           "ult": 0,
-          "sigDmg": 403,
+          "sigDmg": 3627.5796,
           "ultDmg": 0,
-          "casts": 1
-        },
-        "venom": {
-          "sig": 2,
-          "ult": 0,
-          "sigDmg": 123.63119999999999,
-          "ultDmg": 0,
-          "casts": 2
-        },
-        "beacon": {
-          "sig": 2,
-          "ult": 0,
-          "sigDmg": 0,
-          "ultDmg": 0,
-          "casts": 2
-        }
-      },
-      "waves": 12,
-      "win": true,
-      "time": 542.3499999998354,
-      "kills": 153,
-      "leaks": 0,
-      "startGold": 1050,
-      "finalGold": 1278,
-      "invested": 14725
-    },
-    {
-      "world": 3,
-      "level": 9,
-      "towers": {
-        "arrow": {
-          "sig": 18,
-          "ult": 0,
-          "sigDmg": 1779.6024000000002,
-          "ultDmg": 0,
-          "casts": 18
-        },
-        "cannon": {
-          "sig": 1,
-          "ult": 0,
-          "sigDmg": 297.33599999999996,
-          "ultDmg": 0,
-          "casts": 1
-        },
-        "frost": {
-          "sig": 23,
-          "ult": 0,
-          "sigDmg": 96.6448,
-          "ultDmg": 0,
-          "casts": 23
-        },
-        "tesla": {
-          "sig": 21,
-          "ult": 0,
-          "sigDmg": 0,
-          "ultDmg": 0,
-          "casts": 21
-        },
-        "sniper": {
-          "sig": 14,
-          "ult": 0,
-          "sigDmg": 3818.3316,
-          "ultDmg": 0,
-          "casts": 14
+          "casts": 15
         },
         "venom": {
           "sig": 15,
           "ult": 0,
-          "sigDmg": 1206.2283200000004,
+          "sigDmg": 1054.9459680000002,
           "ultDmg": 0,
           "casts": 15
+        },
+        "beacon": {
+          "sig": 13,
+          "ult": 0,
+          "sigDmg": 0,
+          "ultDmg": 0,
+          "casts": 13
+        }
+      },
+      "waves": 12,
+      "win": true,
+      "time": 610.7666666664398,
+      "kills": 154,
+      "leaks": 1,
+      "startGold": 1220,
+      "finalGold": 1538,
+      "invested": 14725
+    },
+    {
+      "world": 3,
+      "level": 10,
+      "towers": {
+        "arrow": {
+          "sig": 24,
+          "ult": 0,
+          "sigDmg": 2630.1071999999995,
+          "ultDmg": 0,
+          "casts": 24
+        },
+        "cannon": {
+          "sig": 3,
+          "ult": 0,
+          "sigDmg": 945.4799999999998,
+          "ultDmg": 0,
+          "casts": 3
+        },
+        "frost": {
+          "sig": 44,
+          "ult": 0,
+          "sigDmg": 95.264,
+          "ultDmg": 0,
+          "casts": 44
+        },
+        "tesla": {
+          "sig": 49,
+          "ult": 0,
+          "sigDmg": 0,
+          "ultDmg": 0,
+          "casts": 49
+        },
+        "sniper": {
+          "sig": 13,
+          "ult": 0,
+          "sigDmg": 2431.5957599999992,
+          "ultDmg": 0,
+          "casts": 13
+        },
+        "venom": {
+          "sig": 19,
+          "ult": 0,
+          "sigDmg": 1466.0197600000004,
+          "ultDmg": 0,
+          "casts": 19
+        },
+        "beacon": {
+          "sig": 11,
+          "ult": 0,
+          "sigDmg": 0,
+          "ultDmg": 0,
+          "casts": 11
+        }
+      },
+      "waves": 12,
+      "win": true,
+      "time": 871.1166666662031,
+      "kills": 183,
+      "leaks": 3,
+      "startGold": 1110,
+      "finalGold": 970,
+      "invested": 14725
+    },
+    {
+      "world": 4,
+      "level": 1,
+      "towers": {
+        "arrow": {
+          "sig": 9,
+          "ult": 0,
+          "sigDmg": 695.8799999999999,
+          "ultDmg": 0,
+          "casts": 9
+        },
+        "cannon": {
+          "sig": 9,
+          "ult": 0,
+          "sigDmg": 2660.2756,
+          "ultDmg": 0,
+          "casts": 9
+        },
+        "frost": {
+          "sig": 23,
+          "ult": 0,
+          "sigDmg": 40.11840000000001,
+          "ultDmg": 0,
+          "casts": 23
+        },
+        "tesla": {
+          "sig": 19,
+          "ult": 0,
+          "sigDmg": 0,
+          "ultDmg": 0,
+          "casts": 19
+        },
+        "sniper": {
+          "sig": 10,
+          "ult": 0,
+          "sigDmg": 2184.1336,
+          "ultDmg": 0,
+          "casts": 10
+        },
+        "venom": {
+          "sig": 9,
+          "ult": 0,
+          "sigDmg": 661.21312,
+          "ultDmg": 0,
+          "casts": 9
+        },
+        "beacon": {
+          "sig": 0,
+          "ult": 0,
+          "sigDmg": 0,
+          "ultDmg": 0,
+          "casts": 0
+        }
+      },
+      "waves": 12,
+      "win": true,
+      "time": 557.0166666664887,
+      "kills": 98,
+      "leaks": 7,
+      "startGold": 1060,
+      "finalGold": 251,
+      "invested": 16105
+    },
+    {
+      "world": 4,
+      "level": 2,
+      "towers": {
+        "arrow": {
+          "sig": 13,
+          "ult": 0,
+          "sigDmg": 1353.7008,
+          "ultDmg": 0,
+          "casts": 13
+        },
+        "cannon": {
+          "sig": 0,
+          "ult": 0,
+          "sigDmg": 0,
+          "ultDmg": 0,
+          "casts": 0
+        },
+        "frost": {
+          "sig": 30,
+          "ult": 0,
+          "sigDmg": 489.08479999999986,
+          "ultDmg": 0,
+          "casts": 30
+        },
+        "tesla": {
+          "sig": 33,
+          "ult": 0,
+          "sigDmg": 0,
+          "ultDmg": 0,
+          "casts": 33
+        },
+        "sniper": {
+          "sig": 16,
+          "ult": 0,
+          "sigDmg": 2298.342000000001,
+          "ultDmg": 0,
+          "casts": 16
+        },
+        "venom": {
+          "sig": 3,
+          "ult": 0,
+          "sigDmg": 165.72336,
+          "ultDmg": 0,
+          "casts": 3
+        },
+        "beacon": {
+          "sig": 3,
+          "ult": 0,
+          "sigDmg": 0,
+          "ultDmg": 0,
+          "casts": 3
+        }
+      },
+      "waves": 12,
+      "win": true,
+      "time": 670.3333333330523,
+      "kills": 113,
+      "leaks": 3,
+      "startGold": 1230,
+      "finalGold": 1444,
+      "invested": 16105
+    },
+    {
+      "world": 4,
+      "level": 3,
+      "towers": {
+        "arrow": {
+          "sig": 12,
+          "ult": 0,
+          "sigDmg": 1237.5200000000007,
+          "ultDmg": 0,
+          "casts": 12
+        },
+        "cannon": {
+          "sig": 8,
+          "ult": 0,
+          "sigDmg": 2505.84,
+          "ultDmg": 0,
+          "casts": 8
+        },
+        "frost": {
+          "sig": 32,
+          "ult": 0,
+          "sigDmg": 70.3104,
+          "ultDmg": 0,
+          "casts": 32
+        },
+        "tesla": {
+          "sig": 32,
+          "ult": 0,
+          "sigDmg": 0,
+          "ultDmg": 0,
+          "casts": 32
+        },
+        "sniper": {
+          "sig": 13,
+          "ult": 0,
+          "sigDmg": 3995.888,
+          "ultDmg": 0,
+          "casts": 13
+        },
+        "venom": {
+          "sig": 8,
+          "ult": 0,
+          "sigDmg": 469.53535999999997,
+          "ultDmg": 0,
+          "casts": 8
+        },
+        "beacon": {
+          "sig": 3,
+          "ult": 0,
+          "sigDmg": 0,
+          "ultDmg": 0,
+          "casts": 3
+        }
+      },
+      "waves": 13,
+      "win": true,
+      "time": 678.383333333045,
+      "kills": 99,
+      "leaks": 14,
+      "startGold": 1120,
+      "finalGold": 1510,
+      "invested": 16105
+    },
+    {
+      "world": 4,
+      "level": 4,
+      "towers": {
+        "arrow": {
+          "sig": 14,
+          "ult": 0,
+          "sigDmg": 1294.4114,
+          "ultDmg": 0,
+          "casts": 14
+        },
+        "cannon": {
+          "sig": 13,
+          "ult": 0,
+          "sigDmg": 5228.159999999999,
+          "ultDmg": 0,
+          "casts": 13
+        },
+        "frost": {
+          "sig": 30,
+          "ult": 0,
+          "sigDmg": 158.22719999999987,
+          "ultDmg": 0,
+          "casts": 30
+        },
+        "tesla": {
+          "sig": 32,
+          "ult": 0,
+          "sigDmg": 0,
+          "ultDmg": 0,
+          "casts": 32
+        },
+        "sniper": {
+          "sig": 17,
+          "ult": 0,
+          "sigDmg": 5477.056,
+          "ultDmg": 0,
+          "casts": 17
+        },
+        "venom": {
+          "sig": 0,
+          "ult": 0,
+          "sigDmg": 0,
+          "ultDmg": 0,
+          "casts": 0
         },
         "beacon": {
           "sig": 10,
@@ -1818,39 +2133,102 @@
           "casts": 10
         }
       },
-      "waves": 12,
+      "waves": 13,
       "win": true,
-      "time": 493.6499999998797,
-      "kills": 155,
-      "leaks": 0,
-      "startGold": 1220,
-      "finalGold": 491,
-      "invested": 16105
+      "time": 623.8999999997612,
+      "kills": 131,
+      "leaks": 3,
+      "startGold": 1150,
+      "finalGold": 1261,
+      "invested": 19065
     },
     {
-      "world": 3,
-      "level": 10,
+      "world": 4,
+      "level": 5,
       "towers": {
         "arrow": {
-          "sig": 24,
+          "sig": 8,
           "ult": 0,
-          "sigDmg": 2491.4421999999995,
+          "sigDmg": 620.2444,
           "ultDmg": 0,
-          "casts": 24
+          "casts": 8
         },
         "cannon": {
-          "sig": 2,
+          "sig": 4,
           "ult": 0,
-          "sigDmg": 375.36,
+          "sigDmg": 1152.1599999999999,
           "ultDmg": 0,
-          "casts": 2
+          "casts": 4
         },
         "frost": {
-          "sig": 39,
+          "sig": 15,
           "ult": 0,
-          "sigDmg": 47.56,
+          "sigDmg": 172.5672,
           "ultDmg": 0,
-          "casts": 39
+          "casts": 15
+        },
+        "tesla": {
+          "sig": 14,
+          "ult": 0,
+          "sigDmg": 0,
+          "ultDmg": 0,
+          "casts": 14
+        },
+        "sniper": {
+          "sig": 8,
+          "ult": 0,
+          "sigDmg": 2032.477199999999,
+          "ultDmg": 0,
+          "casts": 8
+        },
+        "venom": {
+          "sig": 7,
+          "ult": 0,
+          "sigDmg": 424.9981600000001,
+          "ultDmg": 0,
+          "casts": 7
+        },
+        "beacon": {
+          "sig": 6,
+          "ult": 0,
+          "sigDmg": 0,
+          "ultDmg": 0,
+          "casts": 6
+        }
+      },
+      "waves": 9,
+      "win": false,
+      "time": 451.9499999999176,
+      "kills": 55,
+      "leaks": 20,
+      "startGold": 1320,
+      "finalGold": 975,
+      "invested": 9915
+    },
+    {
+      "world": 4,
+      "level": 6,
+      "towers": {
+        "arrow": {
+          "sig": 22,
+          "ult": 0,
+          "sigDmg": 2746.2399999999984,
+          "ultDmg": 0,
+          "casts": 22
+        },
+        "cannon": {
+          "sig": 6,
+          "ult": 0,
+          "sigDmg": 2528.4408000000003,
+          "ultDmg": 0,
+          "casts": 6
+        },
+        "frost": {
+          "sig": 43,
+          "ult": 0,
+          "sigDmg": 115.0824,
+          "ultDmg": 0,
+          "casts": 43
         },
         "tesla": {
           "sig": 44,
@@ -1860,396 +2238,18 @@
           "casts": 44
         },
         "sniper": {
-          "sig": 11,
-          "ult": 0,
-          "sigDmg": 1789.581599999999,
-          "ultDmg": 0,
-          "casts": 11
-        },
-        "venom": {
-          "sig": 21,
-          "ult": 0,
-          "sigDmg": 2097.4944,
-          "ultDmg": 0,
-          "casts": 21
-        },
-        "beacon": {
-          "sig": 11,
-          "ult": 0,
-          "sigDmg": 0,
-          "ultDmg": 0,
-          "casts": 11
-        }
-      },
-      "waves": 12,
-      "win": true,
-      "time": 773.3333333329587,
-      "kills": 185,
-      "leaks": 1,
-      "startGold": 1110,
-      "finalGold": 1370,
-      "invested": 14725
-    },
-    {
-      "world": 4,
-      "level": 1,
-      "towers": {
-        "arrow": {
-          "sig": 9,
-          "ult": 0,
-          "sigDmg": 664.1439999999998,
-          "ultDmg": 0,
-          "casts": 9
-        },
-        "cannon": {
-          "sig": 8,
-          "ult": 0,
-          "sigDmg": 2830.4696,
-          "ultDmg": 0,
-          "casts": 8
-        },
-        "frost": {
-          "sig": 19,
-          "ult": 0,
-          "sigDmg": 0,
-          "ultDmg": 0,
-          "casts": 19
-        },
-        "tesla": {
-          "sig": 15,
-          "ult": 0,
-          "sigDmg": 0,
-          "ultDmg": 0,
-          "casts": 15
-        },
-        "sniper": {
-          "sig": 9,
-          "ult": 0,
-          "sigDmg": 2844.5648,
-          "ultDmg": 0,
-          "casts": 9
-        },
-        "venom": {
-          "sig": 9,
-          "ult": 0,
-          "sigDmg": 860.2408000000001,
-          "ultDmg": 0,
-          "casts": 9
-        },
-        "beacon": {
-          "sig": 0,
-          "ult": 0,
-          "sigDmg": 0,
-          "ultDmg": 0,
-          "casts": 0
-        }
-      },
-      "waves": 12,
-      "win": true,
-      "time": 412.7499999999533,
-      "kills": 105,
-      "leaks": 0,
-      "startGold": 1060,
-      "finalGold": 1176,
-      "invested": 16105
-    },
-    {
-      "world": 4,
-      "level": 2,
-      "towers": {
-        "arrow": {
-          "sig": 11,
-          "ult": 0,
-          "sigDmg": 917.9544,
-          "ultDmg": 0,
-          "casts": 11
-        },
-        "cannon": {
-          "sig": 1,
-          "ult": 0,
-          "sigDmg": 154.92000000000002,
-          "ultDmg": 0,
-          "casts": 1
-        },
-        "frost": {
-          "sig": 29,
-          "ult": 0,
-          "sigDmg": 881.6231999999998,
-          "ultDmg": 0,
-          "casts": 29
-        },
-        "tesla": {
-          "sig": 31,
-          "ult": 0,
-          "sigDmg": 0,
-          "ultDmg": 0,
-          "casts": 31
-        },
-        "sniper": {
-          "sig": 11,
-          "ult": 0,
-          "sigDmg": 2535.4449999999997,
-          "ultDmg": 0,
-          "casts": 11
-        },
-        "venom": {
-          "sig": 2,
-          "ult": 0,
-          "sigDmg": 149.58960000000002,
-          "ultDmg": 0,
-          "casts": 2
-        },
-        "beacon": {
-          "sig": 1,
-          "ult": 0,
-          "sigDmg": 0,
-          "ultDmg": 0,
-          "casts": 1
-        }
-      },
-      "waves": 12,
-      "win": true,
-      "time": 613.8499999997704,
-      "kills": 115,
-      "leaks": 1,
-      "startGold": 1230,
-      "finalGold": 281,
-      "invested": 17485
-    },
-    {
-      "world": 4,
-      "level": 3,
-      "towers": {
-        "arrow": {
-          "sig": 12,
-          "ult": 0,
-          "sigDmg": 1294.4400000000005,
-          "ultDmg": 0,
-          "casts": 12
-        },
-        "cannon": {
-          "sig": 8,
-          "ult": 0,
-          "sigDmg": 2970.2400000000002,
-          "ultDmg": 0,
-          "casts": 8
-        },
-        "frost": {
-          "sig": 23,
-          "ult": 0,
-          "sigDmg": 76.8952,
-          "ultDmg": 0,
-          "casts": 23
-        },
-        "tesla": {
-          "sig": 23,
-          "ult": 0,
-          "sigDmg": 0,
-          "ultDmg": 0,
-          "casts": 23
-        },
-        "sniper": {
-          "sig": 13,
-          "ult": 0,
-          "sigDmg": 4453.438399999998,
-          "ultDmg": 0,
-          "casts": 13
-        },
-        "venom": {
-          "sig": 4,
-          "ult": 0,
-          "sigDmg": 184.58959999999965,
-          "ultDmg": 0,
-          "casts": 4
-        },
-        "beacon": {
-          "sig": 2,
-          "ult": 0,
-          "sigDmg": 0,
-          "ultDmg": 0,
-          "casts": 2
-        }
-      },
-      "waves": 13,
-      "win": true,
-      "time": 500.1166666665405,
-      "kills": 110,
-      "leaks": 3,
-      "startGold": 1120,
-      "finalGold": 697,
-      "invested": 19065
-    },
-    {
-      "world": 4,
-      "level": 4,
-      "towers": {
-        "arrow": {
-          "sig": 12,
-          "ult": 0,
-          "sigDmg": 1163.3999999999996,
-          "ultDmg": 0,
-          "casts": 12
-        },
-        "cannon": {
-          "sig": 12,
-          "ult": 0,
-          "sigDmg": 6103.079999999995,
-          "ultDmg": 0,
-          "casts": 12
-        },
-        "frost": {
-          "sig": 29,
-          "ult": 0,
-          "sigDmg": 84.12880000000004,
-          "ultDmg": 0,
-          "casts": 29
-        },
-        "tesla": {
-          "sig": 31,
-          "ult": 0,
-          "sigDmg": 0,
-          "ultDmg": 0,
-          "casts": 31
-        },
-        "sniper": {
-          "sig": 16,
-          "ult": 0,
-          "sigDmg": 5064.2,
-          "ultDmg": 0,
-          "casts": 16
-        },
-        "venom": {
-          "sig": 0,
-          "ult": 0,
-          "sigDmg": 0,
-          "ultDmg": 0,
-          "casts": 0
-        },
-        "beacon": {
-          "sig": 10,
-          "ult": 0,
-          "sigDmg": 0,
-          "ultDmg": 0,
-          "casts": 10
-        }
-      },
-      "waves": 13,
-      "win": true,
-      "time": 584.88333333313,
-      "kills": 134,
-      "leaks": 0,
-      "startGold": 1150,
-      "finalGold": 1519,
-      "invested": 19065
-    },
-    {
-      "world": 4,
-      "level": 5,
-      "towers": {
-        "arrow": {
-          "sig": 12,
-          "ult": 0,
-          "sigDmg": 886.7736,
-          "ultDmg": 0,
-          "casts": 12
-        },
-        "cannon": {
-          "sig": 16,
-          "ult": 0,
-          "sigDmg": 7164.7599999999975,
-          "ultDmg": 0,
-          "casts": 16
-        },
-        "frost": {
-          "sig": 25,
-          "ult": 0,
-          "sigDmg": 358.44320000000005,
-          "ultDmg": 0,
-          "casts": 25
-        },
-        "tesla": {
-          "sig": 23,
-          "ult": 0,
-          "sigDmg": 0,
-          "ultDmg": 0,
-          "casts": 23
-        },
-        "sniper": {
-          "sig": 16,
-          "ult": 0,
-          "sigDmg": 4837.0743999999995,
-          "ultDmg": 0,
-          "casts": 16
-        },
-        "venom": {
-          "sig": 12,
-          "ult": 0,
-          "sigDmg": 870.3792000000003,
-          "ultDmg": 0,
-          "casts": 12
-        },
-        "beacon": {
-          "sig": 13,
-          "ult": 0,
-          "sigDmg": 0,
-          "ultDmg": 0,
-          "casts": 13
-        }
-      },
-      "waves": 13,
-      "win": true,
-      "time": 492.8999999998804,
-      "kills": 165,
-      "leaks": 8,
-      "startGold": 1320,
-      "finalGold": 985,
-      "invested": 19065
-    },
-    {
-      "world": 4,
-      "level": 6,
-      "towers": {
-        "arrow": {
           "sig": 22,
           "ult": 0,
-          "sigDmg": 3135.2399999999975,
+          "sigDmg": 5400.1064,
           "ultDmg": 0,
           "casts": 22
         },
-        "cannon": {
-          "sig": 6,
-          "ult": 0,
-          "sigDmg": 2191.48264,
-          "ultDmg": 0,
-          "casts": 6
-        },
-        "frost": {
-          "sig": 40,
-          "ult": 0,
-          "sigDmg": 81.45253333335255,
-          "ultDmg": 0,
-          "casts": 40
-        },
-        "tesla": {
-          "sig": 40,
-          "ult": 0,
-          "sigDmg": 0,
-          "ultDmg": 0,
-          "casts": 40
-        },
-        "sniper": {
-          "sig": 21,
-          "ult": 0,
-          "sigDmg": 6120.188000000004,
-          "ultDmg": 0,
-          "casts": 21
-        },
         "venom": {
-          "sig": 13,
+          "sig": 14,
           "ult": 0,
-          "sigDmg": 1837.3145599999982,
+          "sigDmg": 1311.4547008000006,
           "ultDmg": 0,
-          "casts": 13
+          "casts": 14
         },
         "beacon": {
           "sig": 19,
@@ -2261,58 +2261,58 @@
       },
       "waves": 13,
       "win": true,
-      "time": 667.5499999997215,
-      "kills": 150,
-      "leaks": 1,
+      "time": 727.2499999996672,
+      "kills": 144,
+      "leaks": 7,
       "startGold": 1210,
-      "finalGold": 729,
-      "invested": 20725
+      "finalGold": 570,
+      "invested": 19065
     },
     {
       "world": 4,
       "level": 7,
       "towers": {
         "arrow": {
-          "sig": 10,
+          "sig": 7,
           "ult": 0,
-          "sigDmg": 1018.2767999999993,
+          "sigDmg": 463.9999999999999,
           "ultDmg": 0,
-          "casts": 10
+          "casts": 7
         },
         "cannon": {
-          "sig": 2,
+          "sig": 3,
           "ult": 0,
-          "sigDmg": 698.92,
+          "sigDmg": 803.64,
           "ultDmg": 0,
-          "casts": 2
+          "casts": 3
         },
         "frost": {
-          "sig": 34,
+          "sig": 21,
           "ult": 0,
-          "sigDmg": 2348.7408000000005,
+          "sigDmg": 251.70880000000014,
           "ultDmg": 0,
-          "casts": 34
+          "casts": 21
         },
         "tesla": {
-          "sig": 38,
+          "sig": 13,
           "ult": 0,
           "sigDmg": 0,
           "ultDmg": 0,
-          "casts": 38
+          "casts": 13
         },
         "sniper": {
-          "sig": 8,
+          "sig": 5,
           "ult": 0,
-          "sigDmg": 2800.4101999999993,
+          "sigDmg": 1343,
           "ultDmg": 0,
-          "casts": 8
+          "casts": 5
         },
         "venom": {
-          "sig": 4,
+          "sig": 3,
           "ult": 0,
-          "sigDmg": 905.288000000001,
+          "sigDmg": 217.05080000000007,
           "ultDmg": 0,
-          "casts": 4
+          "casts": 3
         },
         "beacon": {
           "sig": 0,
@@ -2322,123 +2322,123 @@
           "casts": 0
         }
       },
-      "waves": 14,
-      "win": true,
-      "time": 708.9166666663506,
-      "kills": 144,
-      "leaks": 17,
+      "waves": 8,
+      "win": false,
+      "time": 522.5999999998534,
+      "kills": 34,
+      "leaks": 20,
       "startGold": 1240,
-      "finalGold": 970,
-      "invested": 20725
+      "finalGold": 752,
+      "invested": 7915
     },
     {
       "world": 4,
       "level": 8,
       "towers": {
         "arrow": {
-          "sig": 23,
+          "sig": 6,
           "ult": 0,
-          "sigDmg": 2770.6167999999993,
+          "sigDmg": 412.80000000000007,
           "ultDmg": 0,
-          "casts": 23
+          "casts": 6
         },
         "cannon": {
-          "sig": 13,
+          "sig": 2,
           "ult": 0,
-          "sigDmg": 4144.103999999999,
+          "sigDmg": 268.44,
           "ultDmg": 0,
-          "casts": 13
+          "casts": 2
         },
         "frost": {
-          "sig": 37,
+          "sig": 11,
           "ult": 0,
-          "sigDmg": 144.59315200000003,
+          "sigDmg": 26.4768,
           "ultDmg": 0,
-          "casts": 37
+          "casts": 11
         },
         "tesla": {
-          "sig": 36,
+          "sig": 3,
           "ult": 0,
           "sigDmg": 0,
           "ultDmg": 0,
-          "casts": 36
+          "casts": 3
         },
         "sniper": {
-          "sig": 22,
-          "ult": 0,
-          "sigDmg": 5959.92016,
-          "ultDmg": 0,
-          "casts": 22
-        },
-        "venom": {
-          "sig": 17,
-          "ult": 0,
-          "sigDmg": 2803.9395200000017,
-          "ultDmg": 0,
-          "casts": 17
-        },
-        "beacon": {
-          "sig": 12,
+          "sig": 0,
           "ult": 0,
           "sigDmg": 0,
           "ultDmg": 0,
-          "casts": 12
+          "casts": 0
+        },
+        "venom": {
+          "sig": 2,
+          "ult": 0,
+          "sigDmg": 136.996,
+          "ultDmg": 0,
+          "casts": 2
+        },
+        "beacon": {
+          "sig": 0,
+          "ult": 0,
+          "sigDmg": 0,
+          "ultDmg": 0,
+          "casts": 0
         }
       },
-      "waves": 14,
-      "win": true,
-      "time": 651.0499999997365,
-      "kills": 207,
-      "leaks": 8,
+      "waves": 6,
+      "win": false,
+      "time": 355.53333333333865,
+      "kills": 24,
+      "leaks": 20,
       "startGold": 1410,
-      "finalGold": 1118,
-      "invested": 22405
+      "finalGold": 103,
+      "invested": 5695
     },
     {
       "world": 4,
       "level": 9,
       "towers": {
         "arrow": {
-          "sig": 5,
-          "ult": 0,
-          "sigDmg": 332.5664,
-          "ultDmg": 0,
-          "casts": 5
-        },
-        "cannon": {
-          "sig": 9,
-          "ult": 0,
-          "sigDmg": 2948.999999999997,
-          "ultDmg": 0,
-          "casts": 9
-        },
-        "frost": {
-          "sig": 24,
-          "ult": 0,
-          "sigDmg": 272.6256000000001,
-          "ultDmg": 0,
-          "casts": 24
-        },
-        "tesla": {
-          "sig": 22,
+          "sig": 0,
           "ult": 0,
           "sigDmg": 0,
           "ultDmg": 0,
-          "casts": 22
+          "casts": 0
+        },
+        "cannon": {
+          "sig": 0,
+          "ult": 0,
+          "sigDmg": 0,
+          "ultDmg": 0,
+          "casts": 0
+        },
+        "frost": {
+          "sig": 0,
+          "ult": 0,
+          "sigDmg": 0,
+          "ultDmg": 0,
+          "casts": 0
+        },
+        "tesla": {
+          "sig": 0,
+          "ult": 0,
+          "sigDmg": 0,
+          "ultDmg": 0,
+          "casts": 0
         },
         "sniper": {
-          "sig": 10,
+          "sig": 0,
           "ult": 0,
-          "sigDmg": 1800.6816000000008,
+          "sigDmg": 0,
           "ultDmg": 0,
-          "casts": 10
+          "casts": 0
         },
         "venom": {
-          "sig": 9,
+          "sig": 0,
           "ult": 0,
-          "sigDmg": 924.752799999999,
+          "sigDmg": 0,
           "ultDmg": 0,
-          "casts": 9
+          "casts": 0
         },
         "beacon": {
           "sig": 0,
@@ -2448,25 +2448,25 @@
           "casts": 0
         }
       },
-      "waves": 9,
+      "waves": 2,
       "win": false,
-      "time": 618.3999999997662,
-      "kills": 103,
+      "time": 159.00000000001867,
+      "kills": 2,
       "leaks": 20,
       "startGold": 1300,
-      "finalGold": 581,
-      "invested": 11035
+      "finalGold": 64,
+      "invested": 1855
     },
     {
       "world": 4,
       "level": 10,
       "towers": {
         "arrow": {
-          "sig": 2,
+          "sig": 0,
           "ult": 0,
-          "sigDmg": 174.72,
+          "sigDmg": 0,
           "ultDmg": 0,
-          "casts": 2
+          "casts": 0
         },
         "cannon": {
           "sig": 0,
@@ -2476,11 +2476,11 @@
           "casts": 0
         },
         "frost": {
-          "sig": 4,
+          "sig": 0,
           "ult": 0,
-          "sigDmg": 32.0416,
+          "sigDmg": 0,
           "ultDmg": 0,
-          "casts": 4
+          "casts": 0
         },
         "tesla": {
           "sig": 0,
@@ -2511,340 +2511,25 @@
           "casts": 0
         }
       },
-      "waves": 4,
+      "waves": 2,
       "win": false,
-      "time": 241.2833333334175,
-      "kills": 24,
+      "time": 102.49999999999547,
+      "kills": 4,
       "leaks": 20,
       "startGold": 1470,
-      "finalGold": 477,
-      "invested": 4015
+      "finalGold": 44,
+      "invested": 2185
     },
     {
       "world": 5,
       "level": 1,
       "towers": {
         "arrow": {
-          "sig": 16,
-          "ult": 0,
-          "sigDmg": 1859.953599999999,
-          "ultDmg": 0,
-          "casts": 16
-        },
-        "cannon": {
-          "sig": 12,
-          "ult": 0,
-          "sigDmg": 7849.800000000012,
-          "ultDmg": 0,
-          "casts": 12
-        },
-        "frost": {
-          "sig": 42,
-          "ult": 0,
-          "sigDmg": 651.8521600000022,
-          "ultDmg": 0,
-          "casts": 42
-        },
-        "tesla": {
-          "sig": 39,
-          "ult": 0,
-          "sigDmg": 0,
-          "ultDmg": 0,
-          "casts": 39
-        },
-        "sniper": {
-          "sig": 19,
-          "ult": 0,
-          "sigDmg": 8092.2528,
-          "ultDmg": 0,
-          "casts": 19
-        },
-        "venom": {
-          "sig": 3,
-          "ult": 0,
-          "sigDmg": 485.7696000000003,
-          "ultDmg": 0,
-          "casts": 3
-        },
-        "beacon": {
-          "sig": 10,
-          "ult": 0,
-          "sigDmg": 0,
-          "ultDmg": 0,
-          "casts": 10
-        }
-      },
-      "waves": 14,
-      "win": true,
-      "time": 771.6666666662935,
-      "kills": 133,
-      "leaks": 6,
-      "startGold": 1280,
-      "finalGold": 1290,
-      "invested": 24185
-    },
-    {
-      "world": 5,
-      "level": 2,
-      "towers": {
-        "arrow": {
-          "sig": 6,
-          "ult": 0,
-          "sigDmg": 320.2843999999991,
-          "ultDmg": 0,
-          "casts": 6
-        },
-        "cannon": {
-          "sig": 10,
-          "ult": 0,
-          "sigDmg": 2796.661599999999,
-          "ultDmg": 0,
-          "casts": 10
-        },
-        "frost": {
-          "sig": 58,
-          "ult": 0,
-          "sigDmg": 2509.3432000000025,
-          "ultDmg": 0,
-          "casts": 58
-        },
-        "tesla": {
-          "sig": 50,
-          "ult": 0,
-          "sigDmg": 0,
-          "ultDmg": 0,
-          "casts": 50
-        },
-        "sniper": {
-          "sig": 10,
-          "ult": 0,
-          "sigDmg": 2913.8687999999993,
-          "ultDmg": 0,
-          "casts": 10
-        },
-        "venom": {
-          "sig": 7,
-          "ult": 0,
-          "sigDmg": 489.41200000000003,
-          "ultDmg": 0,
-          "casts": 7
-        },
-        "beacon": {
-          "sig": 22,
-          "ult": 0,
-          "sigDmg": 0,
-          "ultDmg": 0,
-          "casts": 22
-        }
-      },
-      "waves": 15,
-      "win": true,
-      "time": 930.9666666661486,
-      "kills": 147,
-      "leaks": 5,
-      "startGold": 1310,
-      "finalGold": 1799,
-      "invested": 26025
-    },
-    {
-      "world": 5,
-      "level": 3,
-      "towers": {
-        "arrow": {
-          "sig": 13,
-          "ult": 0,
-          "sigDmg": 1669.7600000000004,
-          "ultDmg": 0,
-          "casts": 13
-        },
-        "cannon": {
-          "sig": 13,
-          "ult": 0,
-          "sigDmg": 3205.880000000003,
-          "ultDmg": 0,
-          "casts": 13
-        },
-        "frost": {
-          "sig": 34,
-          "ult": 0,
-          "sigDmg": 450.2943999999999,
-          "ultDmg": 0,
-          "casts": 34
-        },
-        "tesla": {
-          "sig": 35,
-          "ult": 0,
-          "sigDmg": 0,
-          "ultDmg": 0,
-          "casts": 35
-        },
-        "sniper": {
-          "sig": 14,
-          "ult": 0,
-          "sigDmg": 4757.78112,
-          "ultDmg": 0,
-          "casts": 14
-        },
-        "venom": {
-          "sig": 9,
-          "ult": 0,
-          "sigDmg": 645.8766400000002,
-          "ultDmg": 0,
-          "casts": 9
-        },
-        "beacon": {
           "sig": 0,
           "ult": 0,
           "sigDmg": 0,
           "ultDmg": 0,
           "casts": 0
-        }
-      },
-      "waves": 11,
-      "win": false,
-      "time": 693.5999999996978,
-      "kills": 88,
-      "leaks": 20,
-      "startGold": 1480,
-      "finalGold": 437,
-      "invested": 16105
-    },
-    {
-      "world": 5,
-      "level": 4,
-      "towers": {
-        "arrow": {
-          "sig": 9,
-          "ult": 0,
-          "sigDmg": 825.9599999999998,
-          "ultDmg": 0,
-          "casts": 9
-        },
-        "cannon": {
-          "sig": 6,
-          "ult": 0,
-          "sigDmg": 1288.9367999999995,
-          "ultDmg": 0,
-          "casts": 6
-        },
-        "frost": {
-          "sig": 18,
-          "ult": 0,
-          "sigDmg": 148.6768,
-          "ultDmg": 0,
-          "casts": 18
-        },
-        "tesla": {
-          "sig": 14,
-          "ult": 0,
-          "sigDmg": 0,
-          "ultDmg": 0,
-          "casts": 14
-        },
-        "sniper": {
-          "sig": 4,
-          "ult": 0,
-          "sigDmg": 1266.0503999999992,
-          "ultDmg": 0,
-          "casts": 4
-        },
-        "venom": {
-          "sig": 7,
-          "ult": 0,
-          "sigDmg": 495.8527999999999,
-          "ultDmg": 0,
-          "casts": 7
-        },
-        "beacon": {
-          "sig": 0,
-          "ult": 0,
-          "sigDmg": 0,
-          "ultDmg": 0,
-          "casts": 0
-        }
-      },
-      "waves": 7,
-      "win": false,
-      "time": 385.59999999997797,
-      "kills": 62,
-      "leaks": 20,
-      "startGold": 1510,
-      "finalGold": 44,
-      "invested": 9915
-    },
-    {
-      "world": 5,
-      "level": 5,
-      "towers": {
-        "arrow": {
-          "sig": 31,
-          "ult": 0,
-          "sigDmg": 3310.3357439999954,
-          "ultDmg": 0,
-          "casts": 31
-        },
-        "cannon": {
-          "sig": 2,
-          "ult": 0,
-          "sigDmg": 1460.9224,
-          "ultDmg": 0,
-          "casts": 2
-        },
-        "frost": {
-          "sig": 45,
-          "ult": 0,
-          "sigDmg": 1997.7800960000009,
-          "ultDmg": 0,
-          "casts": 45
-        },
-        "tesla": {
-          "sig": 48,
-          "ult": 0,
-          "sigDmg": 0,
-          "ultDmg": 0,
-          "casts": 48
-        },
-        "sniper": {
-          "sig": 23,
-          "ult": 0,
-          "sigDmg": 8684.961472,
-          "ultDmg": 0,
-          "casts": 23
-        },
-        "venom": {
-          "sig": 35,
-          "ult": 0,
-          "sigDmg": 6806.753392000012,
-          "ultDmg": 0,
-          "casts": 35
-        },
-        "beacon": {
-          "sig": 8,
-          "ult": 0,
-          "sigDmg": 0,
-          "ultDmg": 0,
-          "casts": 8
-        }
-      },
-      "waves": 15,
-      "win": true,
-      "time": 873.3833333328677,
-      "kills": 184,
-      "leaks": 19,
-      "startGold": 1400,
-      "finalGold": 1359,
-      "invested": 26025
-    },
-    {
-      "world": 5,
-      "level": 6,
-      "towers": {
-        "arrow": {
-          "sig": 1,
-          "ult": 0,
-          "sigDmg": 86.16,
-          "ultDmg": 0,
-          "casts": 1
         },
         "cannon": {
           "sig": 0,
@@ -2891,23 +2576,23 @@
       },
       "waves": 3,
       "win": false,
-      "time": 137.1333333333346,
-      "kills": 12,
+      "time": 179.70000000003515,
+      "kills": 5,
       "leaks": 20,
-      "startGold": 1430,
-      "finalGold": 256,
-      "invested": 3175
+      "startGold": 1280,
+      "finalGold": 223,
+      "invested": 2585
     },
     {
       "world": 5,
-      "level": 7,
+      "level": 2,
       "towers": {
         "arrow": {
-          "sig": 3,
+          "sig": 0,
           "ult": 0,
-          "sigDmg": 239.75999999999993,
+          "sigDmg": 0,
           "ultDmg": 0,
-          "casts": 3
+          "casts": 0
         },
         "cannon": {
           "sig": 0,
@@ -2917,11 +2602,11 @@
           "casts": 0
         },
         "frost": {
-          "sig": 5,
+          "sig": 0,
           "ult": 0,
-          "sigDmg": 159.50879999999995,
+          "sigDmg": 0,
           "ultDmg": 0,
-          "casts": 5
+          "casts": 0
         },
         "tesla": {
           "sig": 0,
@@ -2938,11 +2623,11 @@
           "casts": 0
         },
         "venom": {
-          "sig": 2,
+          "sig": 0,
           "ult": 0,
-          "sigDmg": 235.06559999999985,
+          "sigDmg": 0,
           "ultDmg": 0,
-          "casts": 2
+          "casts": 0
         },
         "beacon": {
           "sig": 0,
@@ -2954,12 +2639,327 @@
       },
       "waves": 4,
       "win": false,
-      "time": 269.3166666667504,
-      "kills": 11,
+      "time": 266.4333333334197,
+      "kills": 1,
+      "leaks": 20,
+      "startGold": 1310,
+      "finalGold": 287,
+      "invested": 2835
+    },
+    {
+      "world": 5,
+      "level": 3,
+      "towers": {
+        "arrow": {
+          "sig": 0,
+          "ult": 0,
+          "sigDmg": 0,
+          "ultDmg": 0,
+          "casts": 0
+        },
+        "cannon": {
+          "sig": 0,
+          "ult": 0,
+          "sigDmg": 0,
+          "ultDmg": 0,
+          "casts": 0
+        },
+        "frost": {
+          "sig": 0,
+          "ult": 0,
+          "sigDmg": 0,
+          "ultDmg": 0,
+          "casts": 0
+        },
+        "tesla": {
+          "sig": 0,
+          "ult": 0,
+          "sigDmg": 0,
+          "ultDmg": 0,
+          "casts": 0
+        },
+        "sniper": {
+          "sig": 0,
+          "ult": 0,
+          "sigDmg": 0,
+          "ultDmg": 0,
+          "casts": 0
+        },
+        "venom": {
+          "sig": 0,
+          "ult": 0,
+          "sigDmg": 0,
+          "ultDmg": 0,
+          "casts": 0
+        },
+        "beacon": {
+          "sig": 0,
+          "ult": 0,
+          "sigDmg": 0,
+          "ultDmg": 0,
+          "casts": 0
+        }
+      },
+      "waves": 3,
+      "win": false,
+      "time": 200.23333333338482,
+      "kills": 2,
+      "leaks": 20,
+      "startGold": 1480,
+      "finalGold": 203,
+      "invested": 2585
+    },
+    {
+      "world": 5,
+      "level": 4,
+      "towers": {
+        "arrow": {
+          "sig": 3,
+          "ult": 0,
+          "sigDmg": 199.56,
+          "ultDmg": 0,
+          "casts": 3
+        },
+        "cannon": {
+          "sig": 0,
+          "ult": 0,
+          "sigDmg": 0,
+          "ultDmg": 0,
+          "casts": 0
+        },
+        "frost": {
+          "sig": 9,
+          "ult": 0,
+          "sigDmg": 26.2304,
+          "ultDmg": 0,
+          "casts": 9
+        },
+        "tesla": {
+          "sig": 0,
+          "ult": 0,
+          "sigDmg": 0,
+          "ultDmg": 0,
+          "casts": 0
+        },
+        "sniper": {
+          "sig": 0,
+          "ult": 0,
+          "sigDmg": 0,
+          "ultDmg": 0,
+          "casts": 0
+        },
+        "venom": {
+          "sig": 3,
+          "ult": 0,
+          "sigDmg": 224.64183999999997,
+          "ultDmg": 0,
+          "casts": 3
+        },
+        "beacon": {
+          "sig": 0,
+          "ult": 0,
+          "sigDmg": 0,
+          "ultDmg": 0,
+          "casts": 0
+        }
+      },
+      "waves": 4,
+      "win": false,
+      "time": 241.0333333334173,
+      "kills": 22,
+      "leaks": 20,
+      "startGold": 1510,
+      "finalGold": 371,
+      "invested": 4515
+    },
+    {
+      "world": 5,
+      "level": 5,
+      "towers": {
+        "arrow": {
+          "sig": 0,
+          "ult": 0,
+          "sigDmg": 0,
+          "ultDmg": 0,
+          "casts": 0
+        },
+        "cannon": {
+          "sig": 0,
+          "ult": 0,
+          "sigDmg": 0,
+          "ultDmg": 0,
+          "casts": 0
+        },
+        "frost": {
+          "sig": 0,
+          "ult": 0,
+          "sigDmg": 0,
+          "ultDmg": 0,
+          "casts": 0
+        },
+        "tesla": {
+          "sig": 0,
+          "ult": 0,
+          "sigDmg": 0,
+          "ultDmg": 0,
+          "casts": 0
+        },
+        "sniper": {
+          "sig": 0,
+          "ult": 0,
+          "sigDmg": 0,
+          "ultDmg": 0,
+          "casts": 0
+        },
+        "venom": {
+          "sig": 0,
+          "ult": 0,
+          "sigDmg": 0,
+          "ultDmg": 0,
+          "casts": 0
+        },
+        "beacon": {
+          "sig": 0,
+          "ult": 0,
+          "sigDmg": 0,
+          "ultDmg": 0,
+          "casts": 0
+        }
+      },
+      "waves": 3,
+      "win": false,
+      "time": 211.8000000000607,
+      "kills": 3,
+      "leaks": 20,
+      "startGold": 1400,
+      "finalGold": 14,
+      "invested": 2835
+    },
+    {
+      "world": 5,
+      "level": 6,
+      "towers": {
+        "arrow": {
+          "sig": 0,
+          "ult": 0,
+          "sigDmg": 0,
+          "ultDmg": 0,
+          "casts": 0
+        },
+        "cannon": {
+          "sig": 0,
+          "ult": 0,
+          "sigDmg": 0,
+          "ultDmg": 0,
+          "casts": 0
+        },
+        "frost": {
+          "sig": 0,
+          "ult": 0,
+          "sigDmg": 0,
+          "ultDmg": 0,
+          "casts": 0
+        },
+        "tesla": {
+          "sig": 0,
+          "ult": 0,
+          "sigDmg": 0,
+          "ultDmg": 0,
+          "casts": 0
+        },
+        "sniper": {
+          "sig": 0,
+          "ult": 0,
+          "sigDmg": 0,
+          "ultDmg": 0,
+          "casts": 0
+        },
+        "venom": {
+          "sig": 0,
+          "ult": 0,
+          "sigDmg": 0,
+          "ultDmg": 0,
+          "casts": 0
+        },
+        "beacon": {
+          "sig": 0,
+          "ult": 0,
+          "sigDmg": 0,
+          "ultDmg": 0,
+          "casts": 0
+        }
+      },
+      "waves": 2,
+      "win": false,
+      "time": 95.4833333333292,
+      "kills": 2,
+      "leaks": 20,
+      "startGold": 1430,
+      "finalGold": 156,
+      "invested": 2015
+    },
+    {
+      "world": 5,
+      "level": 7,
+      "towers": {
+        "arrow": {
+          "sig": 0,
+          "ult": 0,
+          "sigDmg": 0,
+          "ultDmg": 0,
+          "casts": 0
+        },
+        "cannon": {
+          "sig": 0,
+          "ult": 0,
+          "sigDmg": 0,
+          "ultDmg": 0,
+          "casts": 0
+        },
+        "frost": {
+          "sig": 0,
+          "ult": 0,
+          "sigDmg": 0,
+          "ultDmg": 0,
+          "casts": 0
+        },
+        "tesla": {
+          "sig": 0,
+          "ult": 0,
+          "sigDmg": 0,
+          "ultDmg": 0,
+          "casts": 0
+        },
+        "sniper": {
+          "sig": 0,
+          "ult": 0,
+          "sigDmg": 0,
+          "ultDmg": 0,
+          "casts": 0
+        },
+        "venom": {
+          "sig": 0,
+          "ult": 0,
+          "sigDmg": 0,
+          "ultDmg": 0,
+          "casts": 0
+        },
+        "beacon": {
+          "sig": 0,
+          "ult": 0,
+          "sigDmg": 0,
+          "ultDmg": 0,
+          "casts": 0
+        }
+      },
+      "waves": 2,
+      "win": false,
+      "time": 137.08333333333456,
+      "kills": 1,
       "leaks": 20,
       "startGold": 1600,
-      "finalGold": 354,
-      "invested": 4015
+      "finalGold": 85,
+      "invested": 2185
     },
     {
       "world": 5,
@@ -3017,7 +3017,7 @@
       },
       "waves": 2,
       "win": false,
-      "time": 93.33333333332932,
+      "time": 91.28333333332944,
       "kills": 1,
       "leaks": 20,
       "startGold": 1490,
@@ -3029,11 +3029,11 @@
       "level": 9,
       "towers": {
         "arrow": {
-          "sig": 3,
+          "sig": 0,
           "ult": 0,
-          "sigDmg": 214.31999999999996,
+          "sigDmg": 0,
           "ultDmg": 0,
-          "casts": 3
+          "casts": 0
         },
         "cannon": {
           "sig": 0,
@@ -3043,11 +3043,11 @@
           "casts": 0
         },
         "frost": {
-          "sig": 3,
+          "sig": 0,
           "ult": 0,
-          "sigDmg": 15.8032,
+          "sigDmg": 0,
           "ultDmg": 0,
-          "casts": 3
+          "casts": 0
         },
         "tesla": {
           "sig": 0,
@@ -3064,11 +3064,11 @@
           "casts": 0
         },
         "venom": {
-          "sig": 3,
+          "sig": 0,
           "ult": 0,
-          "sigDmg": 169.18719999999996,
+          "sigDmg": 0,
           "ultDmg": 0,
-          "casts": 3
+          "casts": 0
         },
         "beacon": {
           "sig": 0,
@@ -3078,60 +3078,60 @@
           "casts": 0
         }
       },
-      "waves": 4,
+      "waves": 2,
       "win": false,
-      "time": 323.9000000000341,
-      "kills": 19,
+      "time": 177.53333333336676,
+      "kills": 3,
       "leaks": 20,
       "startGold": 1520,
-      "finalGold": 109,
-      "invested": 4515
+      "finalGold": 183,
+      "invested": 2185
     },
     {
       "world": 5,
       "level": 10,
       "towers": {
         "arrow": {
-          "sig": 37,
+          "sig": 43,
           "ult": 0,
-          "sigDmg": 6760.409600000025,
+          "sigDmg": 5855.795039999994,
           "ultDmg": 0,
-          "casts": 37
+          "casts": 43
         },
         "cannon": {
-          "sig": 48,
+          "sig": 49,
           "ult": 0,
-          "sigDmg": 21323.454400000057,
+          "sigDmg": 18981.647600000088,
           "ultDmg": 0,
-          "casts": 48
+          "casts": 49
         },
         "frost": {
-          "sig": 71,
+          "sig": 68,
           "ult": 0,
-          "sigDmg": 2190.7184,
+          "sigDmg": 2530.4528000000005,
           "ultDmg": 0,
-          "casts": 71
+          "casts": 68
         },
         "tesla": {
-          "sig": 82,
+          "sig": 75,
           "ult": 0,
           "sigDmg": 0,
           "ultDmg": 0,
-          "casts": 82
+          "casts": 75
         },
         "sniper": {
-          "sig": 44,
+          "sig": 41,
           "ult": 0,
-          "sigDmg": 24148.35,
+          "sigDmg": 20270.38616,
           "ultDmg": 0,
-          "casts": 44
+          "casts": 41
         },
         "venom": {
-          "sig": 30,
+          "sig": 37,
           "ult": 0,
-          "sigDmg": 3214.777600000004,
+          "sigDmg": 4134.215759999999,
           "ultDmg": 0,
-          "casts": 30
+          "casts": 37
         },
         "beacon": {
           "sig": 33,
@@ -3143,73 +3143,73 @@
       },
       "waves": 16,
       "win": true,
-      "time": 1241.8499999991993,
-      "kills": 325,
-      "leaks": 10,
+      "time": 1212.9666666658923,
+      "kills": 316,
+      "leaks": 19,
       "startGold": 1690,
-      "finalGold": 2107,
+      "finalGold": 1263,
       "invested": 32185
     }
   ],
   "summary": {
     "total": 50,
-    "wins": 42,
-    "losses": 8,
+    "wins": 35,
+    "losses": 15,
     "byTower": {
       "arrow": {
-        "sig": 394,
+        "sig": 305,
         "ult": 0,
-        "sigDmg": 40192.387344000024,
+        "sigDmg": 26868.84178719999,
         "ultDmg": 0,
-        "total": 394,
+        "total": 305,
         "levels": 50
       },
       "cannon": {
-        "sig": 195,
+        "sig": 133,
         "ult": 0,
-        "sigDmg": 75640.64904000006,
+        "sigDmg": 44751.45973333342,
         "ultDmg": 0,
-        "total": 195,
+        "total": 133,
         "levels": 50
       },
       "frost": {
-        "sig": 825,
+        "sig": 586,
         "ult": 0,
-        "sigDmg": 14319.064341333356,
+        "sigDmg": 5602.379999999999,
         "ultDmg": 0,
-        "total": 825,
+        "total": 586,
         "levels": 50
       },
       "tesla": {
-        "sig": 778,
+        "sig": 533,
         "ult": 0,
         "sigDmg": 0,
         "ultDmg": 0,
-        "total": 778,
+        "total": 533,
         "levels": 50
       },
       "sniper": {
-        "sig": 322,
+        "sig": 222,
         "ult": 0,
-        "sigDmg": 101724.04215199998,
+        "sigDmg": 58983.70469333332,
         "ultDmg": 0,
-        "total": 322,
+        "total": 222,
         "levels": 50
       },
       "venom": {
-        "sig": 259,
+        "sig": 183,
         "ult": 0,
-        "sigDmg": 29145.599032000013,
+        "sigDmg": 14919.225148800004,
         "ultDmg": 0,
-        "total": 259,
+        "total": 183,
         "levels": 50
       },
       "beacon": {
-        "sig": 165,
+        "sig": 113,
         "ult": 0,
         "sigDmg": 0,
         "ultDmg": 0,
-        "total": 165,
+        "total": 113,
         "levels": 50
       }
     }

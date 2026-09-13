@@ -104,7 +104,18 @@ test('cost and nested stat snapshots reject invalid input and never mutate regis
 
 test('frost slow progression stays within the reduced control budget', () => {
   assert.deepEqual(Array.from({ length: 8 }, (_, level) => statsFor('frost', level).slow.pct),
-    [0.43, 0.5, 0.56, 0.59, 0.62, 0.64, 0.66, 0.68]);
+    [0.3483, 0.405, 0.4536, 0.4779, 0.5022, 0.5184, 0.5346, 0.5508]);
+});
+
+test('global output reduction covers base, poison and support stats while frost utility gets the extra cut', () => {
+  const arrow = statsFor('arrow', 7);
+  const frost = statsFor('frost', 7), venom = statsFor('venom', 7), beacon = statsFor('beacon', 7);
+  assert.deepEqual({ dmg: arrow.dmg, rate: arrow.rate, range: arrow.range },
+    { dmg: 185, rate: 2.5, range: 5.8 });
+  assert.deepEqual({ dmg: frost.dmg, rate: frost.rate, range: frost.range, slow: frost.slow },
+    { dmg: 122, rate: 1.242, range: 4.455, slow: { pct: 0.5508, dur: 2.916 } });
+  assert.equal(venom.poison.damage, 13.5);
+  assert.deepEqual(beacon.aura, { damagePct: 0.18, ratePct: 0.126, skillCooldownPct: 0.108 });
 });
 
 test('unlock boundaries, pause and foreign tower commands do not spend gold', (t) => {
@@ -291,7 +302,7 @@ test('toxic cloud persists, affects ground only, has a bounded population and fr
     mesh.material.addEventListener('dispose', () => disposed++);
   }
   b.setPaused(true); b.update(0.25);
-  assert.equal(field.remaining, 5);
+  assert.equal(field.remaining, 4.5);
   b.setPaused(false);
   assert.equal(b.sellSelected(), true);
   assert.equal(b.fields.length, 0);
@@ -341,7 +352,7 @@ test('beacon skills require active allies; timed buffs cap, expire and stop out 
   b.refreshTowerStats();
   assert.equal(arrow.timedBuffs.length, 1);
   assert.deepEqual(arrow.timedBuffs[0].modifiers,
-    { damagePct: 0.25, ratePct: 0.18, skillCooldownPct: 0.12 });
+    { damagePct: 0.225, ratePct: 0.162, skillCooldownPct: 0.108 });
   assert.ok(arrow.combatStats().rate > arrow.stats.rate);
   arrow.addTimedBuff(beacon.id, b.time, 1, { damagePct: 99, ratePct: 99, skillCooldownPct: 99 });
   b.refreshTowerStats();

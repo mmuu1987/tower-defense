@@ -1,6 +1,7 @@
 // Tower skills share one entry point for the client and offline simulators.
 import * as THREE from 'three';
 import { compareScores, targetMatches, targetScore, xzDistanceSq } from './combat.js';
+import { towerPerformanceScale } from './towers.js';
 
 export const SKILL_DEFS = {
   arrow: {
@@ -75,11 +76,18 @@ export function specializationFor(towerOrKey, branch) {
 
 export function specializationModifiers(tower) {
   const values = { ...specializationFor(tower, tower.specialization)?.modifiers };
+  const scale = towerPerformanceScale(tower.key);
   if (tower.level >= 6) {
     for (const key of Object.keys(values)) {
       if (key.endsWith('Pct')) values[key] *= 1.1;
       if (key === 'signatureRadius') values[key] = 1 + (values[key] - 1) * 1.1;
     }
+  }
+  for (const key of Object.keys(values)) {
+    if (key.endsWith('Pct') || ['armorPenetration', 'critChance', 'signatureDuration'].includes(key)) values[key] *= scale;
+    if (key === 'critMultiplier') values[key] = 1 + (values[key] - 1) * scale;
+    if (key === 'signatureRadius') values[key] = 1 + (values[key] - 1) * scale;
+    if (key === 'slow') values[key] = { pct: values[key].pct * scale, dur: values[key].dur * scale };
   }
   return values;
 }
@@ -163,6 +171,7 @@ function castArrow(tower, tier, ctx) {
 
 function castVenom(tower, tier, ctx) {
   const s = tower.combatStats();
+  const scale = towerPerformanceScale(tower.key);
   const target = tower.acquire(ctx.enemies, ctx);
   if (!target) return false;
   const from = muzzleOf(tower);
@@ -178,7 +187,7 @@ function castVenom(tower, tier, ctx) {
     return true;
   }
   const radius = tower.skillRadius(tier);
-  if (!ctx.createPoisonField?.(tower, target.pos, { radius, duration: 5, poison, targetLimit: 8 })) return false;
+  if (!ctx.createPoisonField?.(tower, target.pos, { radius, duration: 5 * scale, poison, targetLimit: 8 })) return false;
   // G5: 终极技能冲击波
   ctx.fx.ring(target.pos, radius * 0.6, 0x75e66f, 0.4);
   ctx.fx.ring(target.pos, radius, 0x75e66f, 0.65);
@@ -187,14 +196,15 @@ function castVenom(tower, tier, ctx) {
 }
 
 function castBeacon(tower, tier, ctx) {
+  const scale = towerPerformanceScale(tower.key);
   const affected = (ctx.queryTowersRadius?.(tower.pos.x, tower.pos.z, tower.combatStats().range) || ctx.towers)
     .filter((other) => !other.disposed && other !== tower && other.key !== 'beacon' &&
       xzDistanceSq(other.pos, tower.pos) <= tower.combatStats().range ** 2);
   if (!affected.length || !affected.some((other) => other.acquire(ctx.enemies, ctx))) return false;
-  const duration = tier === 'signature' ? 5 : 8;
+  const duration = (tier === 'signature' ? 5 : 8) * scale;
   const boost = tier === 'signature'
-    ? { damagePct: 0.15, ratePct: 0.1, skillCooldownPct: 0.06 }
-    : { damagePct: 0.25, ratePct: 0.18, skillCooldownPct: 0.12 };
+    ? { damagePct: 0.15 * scale, ratePct: 0.1 * scale, skillCooldownPct: 0.06 * scale }
+    : { damagePct: 0.25 * scale, ratePct: 0.18 * scale, skillCooldownPct: 0.12 * scale };
   for (const target of affected) target.addTimedBuff(tower.id, ctx.time, duration, boost, tier);
   // G5: 增强特效
   const color = tier === 'signature' ? 0x62d7ff : 0xffd36a;
@@ -212,6 +222,7 @@ function castBeacon(tower, tier, ctx) {
 
 function castCannon(tower, tier, ctx) {
   const s = tower.combatStats();
+  const scale = towerPerformanceScale(tower.key);
   const target = tower.acquire(ctx.enemies, ctx);
   if (!target) return false;
   const from = muzzleOf(tower);
@@ -232,7 +243,7 @@ function castCannon(tower, tier, ctx) {
   }
   // 地毯轰炸：立即发射多枚炮弹到目标区域
   const bombingSite = target.pos.clone();
-  const radius = 3.5;
+  const radius = 3.5 * scale;
   const random = ctx.random || Math.random;
   for (let i = 0; i < 6; i++) {
     const offset = new THREE.Vector3(
@@ -242,7 +253,7 @@ function castCannon(tower, tier, ctx) {
     );
     const impactPos = bombingSite.clone().add(offset);
     const flight = Math.max(0.35, impactPos.distanceTo(from) / (s.projSpeed * (1 + i * 0.1)));
-    ctx.projectiles.spawnMortar(from, impactPos, Math.round(s.dmg * 0.55), 2.2, flight, s.targets,
+    ctx.projectiles.spawnMortar(from, impactPos, Math.round(s.dmg * 0.55), 2.2 * scale, flight, s.targets,
       damageOpts(tower));
   }
   // G5: 终极技能冲击波
@@ -254,6 +265,7 @@ function castCannon(tower, tier, ctx) {
 
 function castSniper(tower, tier, ctx) {
   const s = tower.combatStats();
+  const scale = towerPerformanceScale(tower.key);
   const target = tower.acquire(ctx.enemies, ctx);
   if (!target) return false;
   const from = muzzleOf(tower);
@@ -262,8 +274,8 @@ function castSniper(tower, tier, ctx) {
     let dmgMul = 1.4;
     const mods = specializationModifiers(tower);
     if (mods.signatureDamagePct) dmgMul += mods.signatureDamagePct;
-    if (target.rank === 'elite') dmgMul += 0.15;
-    if (target.def.shape === 'boss') dmgMul += 0.2;
+    if (target.rank === 'elite') dmgMul += 0.15 * scale;
+    if (target.def.shape === 'boss') dmgMul += 0.2 * scale;
     const dmg = Math.round(s.dmg * dmgMul);
     ctx.projectiles.spawnHoming(from, target, dmg, s.projSpeed, {
       ...damageOpts(tower, { damageType: mods.trueDamage ? 'true' : 'physical' }),
@@ -279,9 +291,9 @@ function castSniper(tower, tier, ctx) {
   if (!target.effects) target.effects = {};
   target.effects.marked = {
     sourceTowerId: tower.id,
-    until: ctx.time + 6,
-    allDamagePct: 0.12,
-    sniperDamagePct: 0.08,
+    until: ctx.time + 6 * scale,
+    allDamagePct: 0.12 * scale,
+    sniperDamagePct: 0.08 * scale,
   };
   // G5: 终极技能冲击波
   ctx.fx.ring(target.pos, 1.0, 0xff4a6a, 0.4);
@@ -292,12 +304,13 @@ function castSniper(tower, tier, ctx) {
 
 function castTesla(tower, tier, ctx) {
   const s = tower.combatStats();
+  const scale = towerPerformanceScale(tower.key);
   if (tier === 'signature') {
     // 过载：短时间提高攻速，但单次攻击略微减伤
     const mods = specializationModifiers(tower);
-    const duration = 2.5 + (mods.signatureDuration || 0);
+    const duration = 2.5 * scale + (mods.signatureDuration || 0);
     tower.overloadUntil = ctx.time + duration;
-    tower.overloadRate = 1.65;
+    tower.overloadRate = 1 + 0.65 * scale;
     tower.overloadDamageMul = 0.75;
     // G5: 招牌技能双层波纹
     ctx.fx.ring(tower.pos, 1.0, 0x6aaaff, 0.3);
@@ -305,13 +318,13 @@ function castTesla(tower, tier, ctx) {
     return true;
   }
   // 电磁脉冲：范围伤害 + 减速
-  const radius = 3.8;
+  const radius = 3.8 * scale;
   const targets = targetsInRange(tower, ctx, radius);
   if (!targets.length) return false;
   for (const e of targets) {
     ctx.hitEnemy(e, Math.round(s.dmg * 1.4), {
       ...damageOpts(tower),
-      effects: { slow: { pct: 0.55, dur: 2 } },
+      effects: { slow: { pct: 0.55 * scale, dur: 2 * scale } },
     });
   }
   // G5: 终极技能冲击波
@@ -323,12 +336,13 @@ function castTesla(tower, tier, ctx) {
 
 function castFrost(tower, tier, ctx) {
   const s = tower.combatStats();
+  const scale = towerPerformanceScale(tower.key);
   if (tier === 'signature') {
     // 冰环新星：扩大范围的减速 + 伤害
     const mods = specializationModifiers(tower);
-    const radius = s.range + 0.6;
-    const slowPct = s.slow.pct + 0.07 + (mods.signatureSlowPct || 0);
-    const slowDur = s.slow.dur + 0.8;
+    const radius = s.range + 0.6 * scale;
+    const slowPct = s.slow.pct + 0.07 * scale + (mods.signatureSlowPct || 0);
+    const slowDur = s.slow.dur + 0.8 * scale;
     const targets = targetsInRange(tower, ctx, radius);
     for (const e of targets) {
       ctx.hitEnemy(e, Math.round(s.dmg * 0.4), {
@@ -345,20 +359,20 @@ function castFrost(tower, tier, ctx) {
   const target = tower.acquire(ctx.enemies, ctx);
   if (!target) return false;
   const fieldPos = target.pos.clone();
-  const radius = 3.4;
+  const radius = 3.4 * scale;
   const nearby = ctx.queryEnemiesRadius(fieldPos.x, fieldPos.z, radius, (e) => e.alive);
   if (!nearby.length) return false;
   for (const e of nearby) {
     ctx.hitEnemy(e, Math.round(s.dmg * 1.5), {
       ...damageOpts(tower),
-      effects: { slow: { pct: 0.54, dur: 4 } },
+      effects: { slow: { pct: 0.54 * scale, dur: 4 * scale } },
     });
     // 极寒领域增伤效果：被冰冻的敌人短时间受到额外伤害
     if (!e.effects) e.effects = {};
     e.effects.frostVulnerable = {
       sourceTowerId: tower.id,
-      until: ctx.time + 4,
-      allDamagePct: 0.1,
+      until: ctx.time + 4 * scale,
+      allDamagePct: 0.1 * scale,
     };
   }
   // G5: 终极技能冲击波

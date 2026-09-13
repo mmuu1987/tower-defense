@@ -206,9 +206,9 @@ test('满级主动技能的爆发与增伤预算保持受控', (t) => {
   const marked = enemy(sniperBattle);
   sniper.skillCooldowns.ultimate = 0;
   assert.equal(sniperBattle.useSelectedSkill('ultimate'), true);
-  assert.equal(marked.effects.marked.allDamagePct, 0.12);
-  assert.equal(marked.effects.marked.sniperDamagePct, 0.08);
-  assert.equal(marked.effects.marked.until - sniperBattle.time, 6);
+  assert.equal(marked.effects.marked.allDamagePct, 0.108);
+  assert.ok(Math.abs(marked.effects.marked.sniperDamagePct - 0.072) < 1e-12);
+  assert.equal(marked.effects.marked.until - sniperBattle.time, 5.4);
 
   for (const [key, multiplier] of [['tesla', 1.4], ['frost', 1.5]]) {
     const battle = setup(t), tower = place(battle, key);
@@ -220,7 +220,8 @@ test('满级主动技能的爆发与增伤预算保持受控', (t) => {
     assert.equal(battle.useSelectedSkill('ultimate'), true);
     assert.ok(hp - target.hp <= Math.round(tower.combatStats().dmg * multiplier),
       `${key} 终极技能对单体的瞬时伤害不应超过设定预算`);
-    if (key === 'frost') assert.equal(target.slowPct, 0.54, '极寒领域应采用下调后的减速强度');
+    if (key === 'frost') assert.ok(Math.abs(target.slowPct - 0.4374) < 1e-12,
+      '极寒领域应采用二次下调后的减速强度');
   }
 });
 

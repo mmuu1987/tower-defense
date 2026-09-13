@@ -14,7 +14,7 @@ import { mapForLevel } from './game/maps.js';
 import { buildLevel, starsFor } from './game/levelgen.js';
 import { Battle } from './game/battle.js';
 import { FxLayer, makePathSampler } from './game/entities.js';
-import { TOWER_DEFS } from './game/towers.js';
+import { statsFor, TOWER_DEFS } from './game/towers.js';
 import { ENEMY_MODEL_NAMES } from './game/units.js';
 import { preloadEnemyModels, hasEnemyModel } from './engine/modellib.js';
 import { Floaters } from './ui/floaters.js';
@@ -491,7 +491,7 @@ async function init() {
     if (!hitPoint) return;
     const cx = Math.floor(hitPoint.x + GRID.w / 2);
     const cz = Math.floor(hitPoint.z + GRID.h / 2);
-    const range = TOWER_DEFS[battle.selectedType]?.range ?? 3;
+    const range = statsFor(battle.selectedType, 0)?.range ?? 3;
     const ok = battle.isBuildable(cx, cz) && battle.gold >= battle.costOf(battle.selectedType);
     setPreview(battle.cellCenter(cx, cz), range, ok ? 0x59d97a : 0xff5d5d);
   });

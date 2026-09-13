@@ -120,6 +120,13 @@ export const TOWER_DEFS = {
 
 export const TOWER_KEYS = Object.keys(TOWER_DEFS);
 
+const GENERAL_TOWER_SCALE = 0.9;
+const FROST_EXTRA_SCALE = 0.9;
+
+export function towerPerformanceScale(key) {
+  return GENERAL_TOWER_SCALE * (key === 'frost' ? FROST_EXTRA_SCALE : 1);
+}
+
 export function towerCost(key, level = 0) {
   const d = TOWER_DEFS[key];
   if (!d || !Number.isInteger(level) || level < 0) return null;
@@ -156,6 +163,27 @@ export function statsFor(key, level = 0) {
       else s[k] = v;
     }
   }
+  const scale = towerPerformanceScale(key);
+  const utilityScale = key === 'frost' ? FROST_EXTRA_SCALE : 1;
+  const scaled = (value) => Math.round(value * scale * 10000) / 10000;
+  const utilityScaled = (value) => Math.round(value * utilityScale * 10000) / 10000;
+  if (Number.isFinite(s.dmg)) s.dmg = Math.round(scaled(s.dmg));
+  for (const key of ['rate', 'range', 'splash', 'chainRange']) {
+    if (Number.isFinite(s[key])) s[key] = utilityScaled(s[key]);
+  }
+  if (s.slow) s.slow = {
+    pct: scaled(s.slow.pct),
+    dur: scaled(s.slow.dur),
+  };
+  if (s.poison) s.poison = {
+    ...s.poison,
+    damage: scaled(s.poison.damage),
+    duration: scaled(s.poison.duration),
+    healBlock: scaled(s.poison.healBlock),
+  };
+  if (s.aura) s.aura = Object.fromEntries(
+    Object.entries(s.aura).map(([name, value]) => [name, scaled(value)]),
+  );
   return s;
 }
 

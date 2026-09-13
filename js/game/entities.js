@@ -1,7 +1,7 @@
 // 战斗实体：路径采样 / 敌人 / 防御塔 / 弹道 / 轻量特效层
 import * as THREE from 'three';
 import { createEnemyMesh } from './units.js';
-import { createTowerMesh, updateTowerAppearance, statsFor, towerCost, TOWER_DEFS } from './towers.js';
+import { createTowerMesh, updateTowerAppearance, statsFor, towerCost, towerPerformanceScale, TOWER_DEFS } from './towers.js';
 import { hasEnemyModel, makeEnemyInstance } from '../engine/modellib.js';
 import { compareScores, resolveDamage, targetMatches, targetScore, xzDistanceSq } from './combat.js';
 import { clearEffects, updateEffects, poisonStacks } from './effects.js';
@@ -511,7 +511,7 @@ export class Tower {
   skillRadius(tier = 'signature') {
     const base = tier === 'ultimate' ? 2.25 : 1.45;
     const mod = specializationModifiers(this);
-    return base * (mod.signatureRadius || 1);
+    return base * towerPerformanceScale(this.key) * (mod.signatureRadius || 1);
   }
 
   acquire(enemies, ctx = null) {
