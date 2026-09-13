@@ -95,29 +95,32 @@ export function createLandscape({ theme, layout, rng }) {
   instanceBatch(group, 'riverbank-rocks', new THREE.DodecahedronGeometry(1, 0), std(palette.bank), banks);
   instanceBatch(group, 'weathered-cliffs', new THREE.DodecahedronGeometry(1, 0), std(palette.cliff), cliffs);
 
-  // The deck follows the exact enemy route, including curved crossings.
-  const decks = [], rails = [], supports = [], stones = [], markers = [];
-  const seen = new Map();
-  for (const [routeIndex, route] of routes.entries()) {
-    let traveled = 0, nextMarker = 2;
+  // Smooth routes contain many tiny segments. Collapse each continuous wet run
+  // into one crossing, then merge crossings whose bridge rectangles intersect.
+  const decks = [], rails = [], supports = [], stones = [], markers = [], crossings = [];
+  const addCrossing = (route, start, end) => {
+    const points = route.slice(start, end + 2);
+    const a = points[0], b = points[points.length - 1];
+    const dx = b.x - a.x, dz = b.z - a.z, span = Math.hypot(dx, dz);
+    if (span < 0.1) return;
+    crossings.push({ points, x: (a.x + b.x) / 2, z: (a.z + b.z) / 2,
+      ux: dx / span, uz: dz / span, length: span + 0.35, width: 1.32 });
+  };
+  for (const route of routes) {
+    let traveled = 0, nextMarker = 2, wetStart = -1;
     for (let i = 0; i < route.length - 1; i++) {
       const a = route[i], b = route[i + 1];
       const len = Math.hypot(b.x - a.x, b.z - a.z);
       const x = (a.x + b.x) / 2, z = (a.z + b.z) / 2;
-      const key = `${Math.round(x * 3)},${Math.round(z * 3)}`;
       traveled += len;
       const nx = -(b.z - a.z) / len, nz = (b.x - a.x) / len, ry = Math.atan2(b.x - a.x, b.z - a.z);
-      if (seen.has(key) && seen.get(key) !== routeIndex) continue;
-      seen.set(key, routeIndex);
-      if (waterDistance(x, z) < 0.55) {
-        decks.push({ x, z, y: -0.025, ry, sx: 1.32, sy: 0.13, sz: len * 0.94 });
-        for (const sign of [-1, 1]) {
-          rails.push({ x: x + nx * 0.68 * sign, z: z + nz * 0.68 * sign,
-            y: 0.36, ry, sx: 0.07, sy: 0.075, sz: len * 1.12 });
-          if (i % 4 === 0) supports.push({ x: x + nx * 0.68 * sign, z: z + nz * 0.68 * sign,
-            y: -0.14, ry, sx: 0.11, sy: 1.05, sz: 0.11 });
-        }
-      } else if (i % 4 === 0) {
+      const wet = waterDistance(x, z) < 0.55;
+      if (wet && wetStart < 0) wetStart = i;
+      if (wetStart >= 0 && (!wet || i === route.length - 2)) {
+        addCrossing(route, wetStart, wet ? i : i - 1);
+        wetStart = -1;
+      }
+      if (!wet && i % 4 === 0) {
         for (const sign of [-1, 1]) stones.push({ x: x + nx * 0.63 * sign, z: z + nz * 0.63 * sign,
           y: 0.025, ry: ry + rng() * 0.2, sx: 0.14, sy: 0.09 + rng() * 0.035, sz: 0.22 + rng() * 0.13 });
       }
@@ -125,6 +128,64 @@ export function createLandscape({ theme, layout, rng }) {
         markers.push({ x, z, y: 0.044, ry, sx: 0.21, sy: 1, sz: 0.25 });
         nextMarker = traveled + 5.5;
       }
+    }
+  }
+
+  const overlaps = (a, b) => {
+    const dx = b.x - a.x, dz = b.z - a.z;
+    const axes = [[a.ux, a.uz], [-a.uz, a.ux], [b.ux, b.uz], [-b.uz, b.ux]];
+    return axes.every(([ax, az]) => {
+      const center = Math.abs(dx * ax + dz * az);
+      const radius = (c) => Math.abs(c.ux * ax + c.uz * az) * c.length / 2 +
+        Math.abs(-c.uz * ax + c.ux * az) * c.width / 2;
+      return center < radius(a) + radius(b) + 0.04;
+    });
+  };
+  const describeCluster = (cluster) => {
+    const first = cluster[0];
+    let ux = 0, uz = 0;
+    for (const crossing of cluster) {
+      const sign = crossing.ux * first.ux + crossing.uz * first.uz < 0 ? -1 : 1;
+      ux += crossing.ux * sign; uz += crossing.uz * sign;
+    }
+    const mag = Math.hypot(ux, uz); ux /= mag; uz /= mag;
+    const nx = -uz, nz = ux, points = cluster.flatMap((crossing) => crossing.points);
+    const along = points.map((p) => p.x * ux + p.z * uz);
+    const across = points.map((p) => p.x * nx + p.z * nz);
+    const minA = Math.min(...along), maxA = Math.max(...along), minN = Math.min(...across), maxN = Math.max(...across);
+    const midA = (minA + maxA) / 2, midN = (minN + maxN) / 2;
+    const x = ux * midA + nx * midN, z = uz * midA + nz * midN;
+    const length = maxA - minA + 0.35, width = maxN - minN + 1.32;
+    return { x, z, ux, uz, nx, nz, length, width };
+  };
+  const clusters = crossings.map((crossing) => [crossing]);
+  // Merging can widen a bridge enough to touch another one. Recompute the
+  // finished rectangles and repeat until every remaining bridge is separate.
+  let merged = true;
+  while (merged) {
+    merged = false;
+    const descriptions = clusters.map(describeCluster);
+    outer: for (let i = 0; i < clusters.length; i++) for (let j = i + 1; j < clusters.length; j++) {
+      if (!overlaps(descriptions[i], descriptions[j])) continue;
+      clusters[i].push(...clusters[j]);
+      clusters.splice(j, 1);
+      merged = true;
+      break outer;
+    }
+  }
+  for (const cluster of clusters) {
+    const { x, z, ux, uz, nx, nz, length, width } = describeCluster(cluster);
+    const ry = Math.atan2(ux, uz), railOffset = width / 2 + 0.02;
+    decks.push({ x, z, y: -0.025, ry, sx: width, sy: 0.13, sz: length });
+    for (const sign of [-1, 1]) {
+      rails.push({ x: x + nx * railOffset * sign, z: z + nz * railOffset * sign,
+        y: 0.36, ry, sx: 0.07, sy: 0.075, sz: length });
+      const postOffsets = length > 3 ? [-0.28, 0.28] : [0];
+      for (const alongOffset of postOffsets) supports.push({
+        x: x + nx * railOffset * sign + ux * length * alongOffset,
+        z: z + nz * railOffset * sign + uz * length * alongOffset,
+        y: -0.14, ry, sx: 0.11, sy: 1.05, sz: 0.11,
+      });
     }
   }
   const wood = theme.id === 'meadow' || theme.id === 'graveyard';

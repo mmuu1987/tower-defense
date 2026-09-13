@@ -12,6 +12,8 @@ const browser = await chromium.launch({ executablePath, headless: true, args: ['
 const errors = [], rows = [];
 fs.mkdirSync('logs/maps', { recursive: true });
 try {
+  const representativeMaps = [[0,0], [0,3], [1,3], [2,5], [2,9], [3,7], [3,9], [4,8], [4,9]];
+  const allMaps = Array.from({ length: 50 }, (_, index) => [Math.floor(index / 10), index % 10]);
   for (const viewport of [{ width: 1440, height: 900 }, { width: 720, height: 900 }, { width: 390, height: 844 }, { width: 844, height: 390 }]) {
     const context = await browser.newContext({ viewport, hasTouch: viewport.width < 1000 });
     const page = await context.newPage();
@@ -22,7 +24,10 @@ try {
     await page.goto(base + '?level=0,0');
     await page.waitForFunction(() => !!window.__TD_DEBUG?.battle(), { timeout: 75000 });
     if (await page.locator('#tut-skip').isVisible()) await page.locator('#tut-skip').click();
-    for (const [w, l] of [[0,0], [0,3], [1,3], [2,5], [2,9], [3,7], [3,9], [4,8], [4,9]]) {
+    // Geometry is resolution-independent, so cover all maps once on desktop
+    // and retain a representative cross-theme set for responsive viewports.
+    for (const [w, l] of viewport.width === 1440 ? allMaps : representativeMaps) {
+      const visualCoverage = representativeMaps.some(([rw, rl]) => rw === w && rl === l);
       await page.evaluate(([world, level]) => window.__TD_ENTER(world, level), [w, l]);
       await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
       const data = await page.evaluate(() => {
@@ -57,11 +62,30 @@ try {
         const after = Array.from(motes.geometry.attributes.position.array.slice(0,9));
         const waterAnimated = water.material.map.offset.y !== waterOffsetBefore;
         const deck = t.group.getObjectByName('bridge-decks');
-        const inverseDecks = [];
+        const inverseDecks = [], deckRects = [];
         for (let i = 0; i < deck.count; i++) {
           const matrix = deck.matrix.clone();
           deck.getMatrixAt(i, matrix);
-          inverseDecks.push(matrix.premultiply(deck.matrixWorld).invert());
+          matrix.premultiply(deck.matrixWorld);
+          deckRects.push([[-0.5,-0.5], [0.5,-0.5], [0.5,0.5], [-0.5,0.5]]
+            .map(([x,z]) => b.cellCenter(0,0).set(x,0,z).applyMatrix4(matrix)));
+          inverseDecks.push(matrix.clone().invert());
+        }
+        const rectOverlap = (a, b) => {
+          const axes = [];
+          for (const rect of [a,b]) for (let i = 0; i < 2; i++) {
+            const edge = rect[i + 1].clone().sub(rect[i]);
+            const length = Math.hypot(edge.x, edge.z);
+            axes.push([-edge.z / length, edge.x / length]);
+          }
+          return axes.every(([ax,az]) => {
+            const pa = a.map((p) => p.x * ax + p.z * az), pb = b.map((p) => p.x * ax + p.z * az);
+            return Math.min(Math.max(...pa), Math.max(...pb)) - Math.max(Math.min(...pa), Math.min(...pb)) > 0.02;
+          });
+        };
+        let deckOverlaps = 0;
+        for (let i = 0; i < deckRects.length; i++) for (let j = i + 1; j < deckRects.length; j++) {
+          if (rectOverlap(deckRects[i], deckRects[j])) deckOverlaps++;
         }
         const deckGaps = t.routes.flat().filter((p) => {
           if (t.waterDistance(p.x, p.z) >= 0.4) return false;
@@ -75,17 +99,18 @@ try {
           maxX: Math.max(...samples.map((p) => Math.abs(p.x))), maxY: Math.max(...samples.map((p) => Math.abs(p.y))),
           bridges: t.group.getObjectByName('bridge-decks')?.count ?? 0,
           decor: t.decor.group.children.length, animated: JSON.stringify(before) !== JSON.stringify(after),
-          waterAnimated, deckGaps, textures: d.renderer.info.memory.textures, geometry: d.renderer.info.memory.geometries };
+          waterAnimated, deckGaps, deckOverlaps, textures: d.renderer.info.memory.textures, geometry: d.renderer.info.memory.geometries };
       });
       assert.ok(data.finite, data.id + ' finite geometry');
       assert.deepEqual(data.size, [42,28]);
       // Low-saturation frost scenes can quantize to exactly 35 sampled color buckets.
-      assert.ok(data.bright > 0.55 && data.colors >= 35 && data.deviation > 8, JSON.stringify(data));
+      if (visualCoverage) assert.ok(data.bright > 0.55 && data.colors >= 35 && data.deviation > 8, JSON.stringify(data));
       assert.ok(data.maxX < 1 && data.maxY < 0.94, 'route framing ' + JSON.stringify(data));
       assert.ok(data.bridges > 0 && data.decor > 15 && data.animated, 'landscape assets ' + JSON.stringify(data));
       assert.ok(data.waterAnimated, 'themed water flow must animate ' + data.id);
       assert.equal(data.deckGaps, 0, 'continuous bridge deck ' + data.id);
-      await page.screenshot({ path: 'logs/maps/' + viewport.width + '-' + data.id + '.png' });
+      assert.equal(data.deckOverlaps, 0, 'bridge decks must not overlap ' + data.id);
+      if (visualCoverage) await page.screenshot({ path: 'logs/maps/' + viewport.width + '-' + data.id + '.png' });
       rows.push({ viewport: viewport.width + 'x' + viewport.height, ...data });
     }
     // Test real pointer placement against the raised ground mesh.
