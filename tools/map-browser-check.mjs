@@ -89,10 +89,12 @@ try {
         }
         const deckMaxWidth = Math.max(...corridors.map((corridor) => corridor.width));
         const roads = Array.from({ length: b.samplers.length }, (_, index) => t.group.getObjectByName(`route-${index}`));
-        const roadLayerGap = roads.length > 1 ? Math.min(...roads.slice(1).map((road, index) =>
-          road.position.y - roads[index].position.y)) : 1;
-        const roadDepthBiased = roads.slice(1).every((road) => road.material.polygonOffset &&
-          road.material.polygonOffsetFactor < 0 && road.material.polygonOffsetUnits < 0);
+        const roadPlaneSpread = Math.max(...roads.map((road) => road.position.y)) - Math.min(...roads.map((road) => road.position.y));
+        const roadStencilClipped = roads.every((road) => road.material.stencilWrite && road.material.stencilRef === 4 &&
+          road.material.stencilWriteMask === 4 && road.material.stencilFuncMask === 4 && !road.material.polygonOffset) &&
+          roads.slice(1).every((road) => road.material.stencilFunc !== roads[0].material.stencilFunc);
+        const bridgeRoadClipped = roads.every((road) => road.userData.bridgeClippedSegments > 0);
+        const stencilTarget = d.renderer.getContext().getContextAttributes().stencil && d.postfx.rtScene.stencilBuffer;
         const deckTop = Math.max(...deck.geometry.attributes.position.array.filter((_, index) => index % 3 === 1));
         const bridgeRoadClearance = deckTop - Math.max(...roads.map((road) => road.position.y));
         return { id: t.map.id, size: [t.halfW * 2,t.halfH * 2], routes: b.samplers.length, bright: bright / n, colors: colors.size,
@@ -101,7 +103,7 @@ try {
           bridges: deck.userData.crossingCount,
           decor: t.decor.group.children.length, animated: JSON.stringify(before) !== JSON.stringify(after),
           waterAnimated, deckGaps, bridgeHeadsOffRoad, railIntrusions, deckMaxWidth,
-          roadLayerGap, roadDepthBiased, bridgeRoadClearance,
+          roadPlaneSpread, roadStencilClipped, bridgeRoadClipped, stencilTarget, bridgeRoadClearance,
           textures: d.renderer.info.memory.textures, geometry: d.renderer.info.memory.geometries };
       });
       assert.ok(data.finite, data.id + ' finite geometry');
@@ -115,10 +117,34 @@ try {
       assert.equal(data.bridgeHeadsOffRoad, 0, 'bridge heads must extend onto the road ' + data.id);
       assert.equal(data.railIntrusions, 0, 'bridge rails must not cross another lane ' + data.id);
       assert.ok(data.deckMaxWidth <= 1.35, 'bridge width must stay aligned with the road ' + data.id);
-      assert.ok(data.roadLayerGap >= 0.005 && data.roadDepthBiased, 'overlapping roads need stable depth ordering ' + data.id);
+      assert.ok(data.roadPlaneSpread < 0.0001 && data.roadStencilClipped && data.stencilTarget,
+        'overlapping roads must be stencil-clipped without depth bias ' + data.id);
+      assert.ok(data.bridgeRoadClipped, 'road and edge geometry must stop below bridge decks ' + data.id);
       assert.ok(data.bridgeRoadClearance >= 0.015, 'bridge deck needs road clearance ' + data.id);
       if (visualCoverage) await page.screenshot({ path: 'logs/maps/' + viewport.width + '-' + data.id + '.png' });
       rows.push({ viewport: viewport.width + 'x' + viewport.height, ...data });
+    }
+    if (viewport.width === 1440) {
+      // Keep explicit near/far artifacts for the map that previously exposed
+      // zoom-dependent road-over-bridge rendering.
+      await page.evaluate(() => window.__TD_ENTER(3, 7));
+      await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+      await page.screenshot({ path: 'logs/maps/bridge-sand-8-far.png' });
+      await page.evaluate(() => {
+        const d = window.__TD_DEBUG;
+        const corridors = d.terrain().group.getObjectByName('bridge-decks').userData.corridors;
+        const corridor = corridors.reduce((best, candidate) => {
+          const middle = candidate.points[Math.floor(candidate.points.length / 2)];
+          const bestMiddle = best.points[Math.floor(best.points.length / 2)];
+          return Math.hypot(middle.x, middle.z) < Math.hypot(bestMiddle.x, bestMiddle.z) ? candidate : best;
+        });
+        const point = corridor.points[Math.floor(corridor.points.length / 2)];
+        d.rig.focusAt(point.x, point.z);
+        d.rig.dist = d.rig.cur.dist = 14;
+        d.rig.update(0);
+      });
+      await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+      await page.screenshot({ path: 'logs/maps/bridge-sand-8-near.png' });
     }
     // Test real pointer placement against the raised ground mesh.
     await page.evaluate(() => window.__TD_ENTER(3, 9));

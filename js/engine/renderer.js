@@ -5,6 +5,7 @@ export function createRenderer(preset) {
   const renderer = new THREE.WebGLRenderer({
     antialias: false, // 抗锯齿由场景 RT 的 MSAA samples 提供
     powerPreference: 'high-performance',
+    stencil: true,
   });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, preset.pixelRatioCap));
   renderer.setSize(window.innerWidth, window.innerHeight);

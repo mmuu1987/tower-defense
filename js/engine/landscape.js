@@ -9,6 +9,47 @@ const PALETTES = {
   graveyard: { water: 0x315b50, bank: 0x555c56, cliff: 0x46534e, particle: 0x9de6be },
 };
 
+const distanceToSegmentSq = (x, z, a, b) => {
+  const dx = b.x - a.x, dz = b.z - a.z, lengthSq = dx * dx + dz * dz;
+  if (lengthSq < 1e-8) return (x - a.x) ** 2 + (z - a.z) ** 2;
+  const t = Math.max(0, Math.min(1, ((x - a.x) * dx + (z - a.z) * dz) / lengthSq));
+  return (x - a.x - dx * t) ** 2 + (z - a.z - dz * t) ** 2;
+};
+
+// Keep bridge spans in one shared source of truth. Terrain uses the segment
+// indices to remove the road/edge below each deck instead of relying on depth
+// bias, while the landscape uses the same points to build the visible bridge.
+export function findBridgeCrossings(routes, waterDistance) {
+  const crossings = [];
+  const addCrossing = (route, routeIndex, start, end) => {
+    let from = start, to = end + 1, extension = 0;
+    while (from > 0 && extension < 1.8 && (extension < 0.55 || waterDistance(route[from].x, route[from].z) < 0.75)) {
+      extension += Math.hypot(route[from].x - route[from - 1].x, route[from].z - route[from - 1].z);
+      from--;
+    }
+    extension = 0;
+    while (to < route.length - 1 && extension < 1.8 && (extension < 0.55 || waterDistance(route[to].x, route[to].z) < 0.75)) {
+      extension += Math.hypot(route[to + 1].x - route[to].x, route[to + 1].z - route[to].z);
+      to++;
+    }
+    const points = route.slice(from, to + 1);
+    if (points.length > 1) crossings.push({ points, width: 1.32, routeIndex, from, to });
+  };
+  for (const [routeIndex, route] of routes.entries()) {
+    let wetStart = -1;
+    for (let i = 0; i < route.length - 1; i++) {
+      const a = route[i], b = route[i + 1];
+      const wet = waterDistance((a.x + b.x) / 2, (a.z + b.z) / 2) < 0.55;
+      if (wet && wetStart < 0) wetStart = i;
+      if (wetStart >= 0 && (!wet || i === route.length - 2)) {
+        addCrossing(route, routeIndex, wetStart, wet ? i : i - 1);
+        wetStart = -1;
+      }
+    }
+  }
+  return crossings;
+}
+
 function flowTexture(rng) {
   const canvas = document.createElement('canvas');
   canvas.width = 128; canvas.height = 256;
@@ -99,31 +140,12 @@ export function createLandscape({ theme, layout, rng }) {
   // Build each crossing as a road-width ribbon that follows the actual route.
   // At multi-route junctions the shared deck stays continuous while internal
   // rails are omitted, so the result reads as one intentional bridge junction.
-  const rails = [], supports = [], planks = [], stones = [], markers = [], crossings = [];
-  const distanceToSegmentSq = (x, z, a, b) => {
-    const dx = b.x - a.x, dz = b.z - a.z, lengthSq = dx * dx + dz * dz;
-    if (lengthSq < 1e-8) return (x - a.x) ** 2 + (z - a.z) ** 2;
-    const t = Math.max(0, Math.min(1, ((x - a.x) * dx + (z - a.z) * dz) / lengthSq));
-    return (x - a.x - dx * t) ** 2 + (z - a.z - dz * t) ** 2;
-  };
+  const rails = [], supports = [], planks = [], stones = [], markers = [];
+  const crossings = findBridgeCrossings(routes, waterDistance);
   const nearOtherRoute = (routeIndex, x, z, radius) => routes.some((route, index) => index !== routeIndex &&
     route.some((point, i) => i < route.length - 1 && distanceToSegmentSq(x, z, point, route[i + 1]) < radius ** 2));
-  const addCrossing = (route, start, end) => {
-    let from = start, to = end + 1, extension = 0;
-    while (from > 0 && extension < 1.8 && (extension < 0.55 || waterDistance(route[from].x, route[from].z) < 0.75)) {
-      extension += Math.hypot(route[from].x - route[from - 1].x, route[from].z - route[from - 1].z);
-      from--;
-    }
-    extension = 0;
-    while (to < route.length - 1 && extension < 1.8 && (extension < 0.55 || waterDistance(route[to].x, route[to].z) < 0.75)) {
-      extension += Math.hypot(route[to + 1].x - route[to].x, route[to + 1].z - route[to].z);
-      to++;
-    }
-    const points = route.slice(from, to + 1);
-    if (points.length > 1) crossings.push({ points, width: 1.32 });
-  };
   for (const [routeIndex, route] of routes.entries()) {
-    let traveled = 0, nextMarker = 2, wetStart = -1;
+    let traveled = 0, nextMarker = 2;
     for (let i = 0; i < route.length - 1; i++) {
       const a = route[i], b = route[i + 1];
       const len = Math.hypot(b.x - a.x, b.z - a.z);
@@ -131,11 +153,6 @@ export function createLandscape({ theme, layout, rng }) {
       traveled += len;
       const nx = -(b.z - a.z) / len, nz = (b.x - a.x) / len, ry = Math.atan2(b.x - a.x, b.z - a.z);
       const wet = waterDistance(x, z) < 0.55;
-      if (wet && wetStart < 0) wetStart = i;
-      if (wetStart >= 0 && (!wet || i === route.length - 2)) {
-        addCrossing(route, wetStart, wet ? i : i - 1);
-        wetStart = -1;
-      }
       if (!wet && i % 4 === 0) {
         for (const sign of [-1, 1]) {
           const sx = x + nx * 0.63 * sign, sz = z + nz * 0.63 * sign;

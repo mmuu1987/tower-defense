@@ -69,6 +69,7 @@ export class PostFX {
     this.rtScene = new THREE.WebGLRenderTarget(w(), h(), {
       type: THREE.HalfFloatType,
       samples: 4,
+      stencilBuffer: true,
     });
     const bw = () => Math.max(8, Math.floor(w() * preset.bloomRes));
     const bh = () => Math.max(8, Math.floor(h() * preset.bloomRes));

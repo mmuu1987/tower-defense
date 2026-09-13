@@ -2,7 +2,7 @@
 import * as THREE from 'three';
 import { GRID, MAP_LINEAR_SCALE } from '../game/config.js';
 import { createMapLayout, seededRandom } from '../game/map-layout.js';
-import { createLandscape } from './landscape.js';
+import { createLandscape, findBridgeCrossings } from './landscape.js';
 
 export const worldToCell = (x, z) => ({
   cx: Math.floor(x / GRID.cell + GRID.w / 2),
@@ -70,7 +70,7 @@ async function loadTexture(url, fallbackKind, repeatXY) {
   return tex;
 }
 
-function buildRibbonGeometry(ptsWorld, width) {
+function buildRibbonGeometry(ptsWorld, width, skippedSegments = null) {
   const n = ptsWorld.length;
   const pos = [], uv = [], idx = [];
   let dist = 0;
@@ -104,6 +104,7 @@ function buildRibbonGeometry(ptsWorld, width) {
     uv.push(0, dist / width, 1, dist / width);
   }
   for (let i = 0; i < n - 1; i++) {
+    if (skippedSegments?.has(i)) continue;
     const a = i * 2, b = a + 1, c = a + 2, d = a + 3;
     idx.push(a, c, b, b, c, d);
   }
@@ -316,24 +317,38 @@ export async function buildTerrain({ theme, map }) {
   const pathTex = await loadTexture('./assets/textures/stone.jpg', 'rock', [2.0, 2.0]);
   const edgeMat = new THREE.MeshStandardMaterial({ color: theme.id === 'frost' ? 0x688895 : 0x625c50, roughness: 1 });
   const roadMat = new THREE.MeshStandardMaterial({ map: pathTex, color: theme.pathTint, roughness: 0.85 });
+  const bridgeSegments = new Map(routes.map((_, index) => [index, new Set()]));
+  for (const crossing of findBridgeCrossings(routes, waterDistance)) {
+    for (let segment = crossing.from; segment < crossing.to; segment++) {
+      bridgeSegments.get(crossing.routeIndex).add(segment);
+    }
+  }
+  const routeMaterial = (base, routeIndex, stencilBit) => {
+    const material = routeIndex === 0 ? base : base.clone();
+    material.stencilWrite = true;
+    material.stencilRef = stencilBit;
+    material.stencilWriteMask = stencilBit;
+    material.stencilFuncMask = stencilBit;
+    material.stencilFunc = routeIndex === 0 ? THREE.AlwaysStencilFunc : THREE.NotEqualStencilFunc;
+    material.stencilFail = THREE.KeepStencilOp;
+    material.stencilZFail = THREE.KeepStencilOp;
+    material.stencilZPass = THREE.ReplaceStencilOp;
+    return material;
+  };
   routes.forEach((route, i) => {
-    const routeMaterial = (base) => {
-      if (i === 0) return base;
-      const material = base.clone();
-      material.polygonOffset = true;
-      material.polygonOffsetFactor = -2 * i;
-      material.polygonOffsetUnits = -2 * i;
-      return material;
-    };
-    const shoulder = new THREE.Mesh(buildRibbonGeometry(route, 1.5), routeMaterial(dirtMat));
-    const edge = new THREE.Mesh(buildRibbonGeometry(route, 1.18), routeMaterial(edgeMat));
-    const road = new THREE.Mesh(buildRibbonGeometry(route, 0.96), routeMaterial(roadMat));
-    const routeLayer = i * 0.006;
-    shoulder.position.y = 0.015 + routeLayer;
-    edge.position.y = 0.022 + routeLayer;
-    road.position.y = 0.032 + routeLayer;
+    const clipped = bridgeSegments.get(i);
+    const shoulder = new THREE.Mesh(buildRibbonGeometry(route, 1.5), routeMaterial(dirtMat, i, 1));
+    const edge = new THREE.Mesh(buildRibbonGeometry(route, 1.18, clipped), routeMaterial(edgeMat, i, 2));
+    const road = new THREE.Mesh(buildRibbonGeometry(route, 0.96, clipped), routeMaterial(roadMat, i, 4));
+    shoulder.position.y = 0.015;
+    edge.position.y = 0.022;
+    road.position.y = 0.032;
     road.name = `route-${i}`;
-    for (const mesh of [shoulder, edge, road]) { mesh.receiveShadow = true; mesh.renderOrder = i; }
+    road.userData.bridgeClippedSegments = clipped.size;
+    for (const [layer, mesh] of [shoulder, edge, road].entries()) {
+      mesh.receiveShadow = true;
+      mesh.renderOrder = layer * 10 + i;
+    }
     group.add(shoulder, edge, road);
   });
 
