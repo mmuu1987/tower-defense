@@ -12,7 +12,7 @@ const browser = await chromium.launch({ executablePath, headless: true, args: ['
 const errors = [], rows = [];
 fs.mkdirSync('logs/maps', { recursive: true });
 try {
-  const representativeMaps = [[0,0], [0,3], [1,3], [2,5], [2,9], [3,7], [3,9], [4,8], [4,9]];
+  const representativeMaps = [[0,0], [0,3], [1,3], [2,3], [2,5], [2,9], [3,7], [3,9], [4,8], [4,9]];
   const allMaps = Array.from({ length: 50 }, (_, index) => [Math.floor(index / 10), index % 10]);
   for (const viewport of [{ width: 1440, height: 900 }, { width: 720, height: 900 }, { width: 390, height: 844 }, { width: 844, height: 390 }]) {
     const context = await browser.newContext({ viewport, hasTouch: viewport.width < 1000 });
@@ -62,44 +62,39 @@ try {
         const after = Array.from(motes.geometry.attributes.position.array.slice(0,9));
         const waterAnimated = water.material.map.offset.y !== waterOffsetBefore;
         const deck = t.group.getObjectByName('bridge-decks');
-        const inverseDecks = [], deckRects = [];
-        for (let i = 0; i < deck.count; i++) {
-          const matrix = deck.matrix.clone();
-          deck.getMatrixAt(i, matrix);
-          matrix.premultiply(deck.matrixWorld);
-          deckRects.push([[-0.5,-0.5], [0.5,-0.5], [0.5,0.5], [-0.5,0.5]]
-            .map(([x,z]) => b.cellCenter(0,0).set(x,0,z).applyMatrix4(matrix)));
-          inverseDecks.push(matrix.clone().invert());
-        }
-        const rectOverlap = (a, b) => {
-          const axes = [];
-          for (const rect of [a,b]) for (let i = 0; i < 2; i++) {
-            const edge = rect[i + 1].clone().sub(rect[i]);
-            const length = Math.hypot(edge.x, edge.z);
-            axes.push([-edge.z / length, edge.x / length]);
-          }
-          return axes.every(([ax,az]) => {
-            const pa = a.map((p) => p.x * ax + p.z * az), pb = b.map((p) => p.x * ax + p.z * az);
-            return Math.min(Math.max(...pa), Math.max(...pb)) - Math.max(Math.min(...pa), Math.min(...pb)) > 0.02;
-          });
+        const corridors = deck.userData.corridors;
+        const distanceToSegmentSq = (x, z, a, c) => {
+          const dx = c.x - a.x, dz = c.z - a.z, lengthSq = dx * dx + dz * dz;
+          if (lengthSq < 1e-8) return (x - a.x) ** 2 + (z - a.z) ** 2;
+          const ratio = Math.max(0, Math.min(1, ((x - a.x) * dx + (z - a.z) * dz) / lengthSq));
+          return (x - a.x - dx * ratio) ** 2 + (z - a.z - dz * ratio) ** 2;
         };
-        let deckOverlaps = 0;
-        for (let i = 0; i < deckRects.length; i++) for (let j = i + 1; j < deckRects.length; j++) {
-          if (rectOverlap(deckRects[i], deckRects[j])) deckOverlaps++;
-        }
+        const insideCorridor = (corridor, point, padding = 0) => corridor.points.some((a, i) =>
+          i < corridor.points.length - 1 && distanceToSegmentSq(point.x, point.z, a, corridor.points[i + 1]) <=
+            (corridor.width / 2 + padding) ** 2);
         const deckGaps = t.routes.flat().filter((p) => {
           if (t.waterDistance(p.x, p.z) >= 0.4) return false;
-          return !inverseDecks.some((inverse) => {
-            const local = b.cellCenter(0,0).set(p.x,-0.025,p.z).applyMatrix4(inverse);
-            return Math.abs(local.x) < 0.61 && Math.abs(local.z) < 0.61;
-          });
+          return !corridors.some((corridor) => insideCorridor(corridor, p));
         }).length;
+        const bridgeHeadsOffRoad = corridors.flatMap((corridor) => [corridor.points[0], corridor.points.at(-1)])
+          .filter((point) => t.waterDistance(point.x, point.z) < 0.55 &&
+            Math.abs(point.x) < t.halfW - 0.8 && Math.abs(point.z) < t.halfH - 0.8).length;
+        const rail = t.group.getObjectByName('bridge-rails');
+        let railIntrusions = 0;
+        if (rail) for (let i = 0; i < rail.count; i++) {
+          const matrix = rail.matrix.clone(); rail.getMatrixAt(i, matrix); matrix.premultiply(rail.matrixWorld);
+          const railSamples = [-0.45, 0, 0.45].map((z) => b.cellCenter(0,0).set(0, 0, z).applyMatrix4(matrix));
+          const own = rail.userData.corridorIndices[i];
+          if (corridors.some((corridor, index) => index !== own && railSamples.some((point) => insideCorridor(corridor, point)))) railIntrusions++;
+        }
+        const deckMaxWidth = Math.max(...corridors.map((corridor) => corridor.width));
         return { id: t.map.id, size: [t.halfW * 2,t.halfH * 2], routes: b.samplers.length, bright: bright / n, colors: colors.size,
           deviation: Math.sqrt(sum2/n - (sum/n)**2), finite, meshes,
           maxX: Math.max(...samples.map((p) => Math.abs(p.x))), maxY: Math.max(...samples.map((p) => Math.abs(p.y))),
-          bridges: t.group.getObjectByName('bridge-decks')?.count ?? 0,
+          bridges: deck.userData.crossingCount,
           decor: t.decor.group.children.length, animated: JSON.stringify(before) !== JSON.stringify(after),
-          waterAnimated, deckGaps, deckOverlaps, textures: d.renderer.info.memory.textures, geometry: d.renderer.info.memory.geometries };
+          waterAnimated, deckGaps, bridgeHeadsOffRoad, railIntrusions, deckMaxWidth,
+          textures: d.renderer.info.memory.textures, geometry: d.renderer.info.memory.geometries };
       });
       assert.ok(data.finite, data.id + ' finite geometry');
       assert.deepEqual(data.size, [42,28]);
@@ -109,7 +104,9 @@ try {
       assert.ok(data.bridges > 0 && data.decor > 15 && data.animated, 'landscape assets ' + JSON.stringify(data));
       assert.ok(data.waterAnimated, 'themed water flow must animate ' + data.id);
       assert.equal(data.deckGaps, 0, 'continuous bridge deck ' + data.id);
-      assert.equal(data.deckOverlaps, 0, 'bridge decks must not overlap ' + data.id);
+      assert.equal(data.bridgeHeadsOffRoad, 0, 'bridge heads must extend onto the road ' + data.id);
+      assert.equal(data.railIntrusions, 0, 'bridge rails must not cross another lane ' + data.id);
+      assert.ok(data.deckMaxWidth <= 1.35, 'bridge width must stay aligned with the road ' + data.id);
       if (visualCoverage) await page.screenshot({ path: 'logs/maps/' + viewport.width + '-' + data.id + '.png' });
       rows.push({ viewport: viewport.width + 'x' + viewport.height, ...data });
     }

@@ -31,7 +31,7 @@ function flowTexture(rng) {
 }
 
 function instanceBatch(group, name, geometry, material, transforms, shadow = true) {
-  if (!transforms.length) { geometry.dispose(); material.dispose(); return; }
+  if (!transforms.length) { geometry.dispose(); material.dispose(); return null; }
   const mesh = new THREE.InstancedMesh(geometry, material, transforms.length);
   mesh.name = name;
   const dummy = new THREE.Object3D();
@@ -45,6 +45,7 @@ function instanceBatch(group, name, geometry, material, transforms, shadow = tru
   mesh.castShadow = shadow; mesh.receiveShadow = true;
   mesh.computeBoundingSphere();
   group.add(mesh);
+  return mesh;
 }
 
 export function createLandscape({ theme, layout, rng }) {
@@ -95,16 +96,23 @@ export function createLandscape({ theme, layout, rng }) {
   instanceBatch(group, 'riverbank-rocks', new THREE.DodecahedronGeometry(1, 0), std(palette.bank), banks);
   instanceBatch(group, 'weathered-cliffs', new THREE.DodecahedronGeometry(1, 0), std(palette.cliff), cliffs);
 
-  // Smooth routes contain many tiny segments. Collapse each continuous wet run
-  // into one crossing, then merge crossings whose bridge rectangles intersect.
-  const decks = [], rails = [], supports = [], stones = [], markers = [], crossings = [];
+  // Build each crossing as a road-width ribbon that follows the actual route.
+  // At multi-route junctions the shared deck stays continuous while internal
+  // rails are omitted, so the result reads as one intentional bridge junction.
+  const rails = [], supports = [], planks = [], stones = [], markers = [], crossings = [];
   const addCrossing = (route, start, end) => {
-    const points = route.slice(start, end + 2);
-    const a = points[0], b = points[points.length - 1];
-    const dx = b.x - a.x, dz = b.z - a.z, span = Math.hypot(dx, dz);
-    if (span < 0.1) return;
-    crossings.push({ points, x: (a.x + b.x) / 2, z: (a.z + b.z) / 2,
-      ux: dx / span, uz: dz / span, length: span + 0.35, width: 1.32 });
+    let from = start, to = end + 1, extension = 0;
+    while (from > 0 && extension < 1.8 && (extension < 0.55 || waterDistance(route[from].x, route[from].z) < 0.75)) {
+      extension += Math.hypot(route[from].x - route[from - 1].x, route[from].z - route[from - 1].z);
+      from--;
+    }
+    extension = 0;
+    while (to < route.length - 1 && extension < 1.8 && (extension < 0.55 || waterDistance(route[to].x, route[to].z) < 0.75)) {
+      extension += Math.hypot(route[to + 1].x - route[to].x, route[to + 1].z - route[to].z);
+      to++;
+    }
+    const points = route.slice(from, to + 1);
+    if (points.length > 1) crossings.push({ points, width: 1.32 });
   };
   for (const route of routes) {
     let traveled = 0, nextMarker = 2, wetStart = -1;
@@ -131,67 +139,85 @@ export function createLandscape({ theme, layout, rng }) {
     }
   }
 
-  const overlaps = (a, b) => {
-    const dx = b.x - a.x, dz = b.z - a.z;
-    const axes = [[a.ux, a.uz], [-a.uz, a.ux], [b.ux, b.uz], [-b.uz, b.ux]];
-    return axes.every(([ax, az]) => {
-      const center = Math.abs(dx * ax + dz * az);
-      const radius = (c) => Math.abs(c.ux * ax + c.uz * az) * c.length / 2 +
-        Math.abs(-c.uz * ax + c.ux * az) * c.width / 2;
-      return center < radius(a) + radius(b) + 0.04;
-    });
+  const distanceToSegmentSq = (x, z, a, b) => {
+    const dx = b.x - a.x, dz = b.z - a.z, lengthSq = dx * dx + dz * dz;
+    if (lengthSq < 1e-8) return (x - a.x) ** 2 + (z - a.z) ** 2;
+    const t = Math.max(0, Math.min(1, ((x - a.x) * dx + (z - a.z) * dz) / lengthSq));
+    return (x - a.x - dx * t) ** 2 + (z - a.z - dz * t) ** 2;
   };
-  const describeCluster = (cluster) => {
-    const first = cluster[0];
-    let ux = 0, uz = 0;
-    for (const crossing of cluster) {
-      const sign = crossing.ux * first.ux + crossing.uz * first.uz < 0 ? -1 : 1;
-      ux += crossing.ux * sign; uz += crossing.uz * sign;
+  const insideCrossing = (crossing, x, z, padding = 0) => {
+    const radiusSq = (crossing.width / 2 + padding) ** 2;
+    for (let i = 0; i < crossing.points.length - 1; i++) {
+      if (distanceToSegmentSq(x, z, crossing.points[i], crossing.points[i + 1]) <= radiusSq) return true;
     }
-    const mag = Math.hypot(ux, uz); ux /= mag; uz /= mag;
-    const nx = -uz, nz = ux, points = cluster.flatMap((crossing) => crossing.points);
-    const along = points.map((p) => p.x * ux + p.z * uz);
-    const across = points.map((p) => p.x * nx + p.z * nz);
-    const minA = Math.min(...along), maxA = Math.max(...along), minN = Math.min(...across), maxN = Math.max(...across);
-    const midA = (minA + maxA) / 2, midN = (minN + maxN) / 2;
-    const x = ux * midA + nx * midN, z = uz * midA + nz * midN;
-    const length = maxA - minA + 0.35, width = maxN - minN + 1.32;
-    return { x, z, ux, uz, nx, nz, length, width };
+    return false;
   };
-  const clusters = crossings.map((crossing) => [crossing]);
-  // Merging can widen a bridge enough to touch another one. Recompute the
-  // finished rectangles and repeat until every remaining bridge is separate.
-  let merged = true;
-  while (merged) {
-    merged = false;
-    const descriptions = clusters.map(describeCluster);
-    outer: for (let i = 0; i < clusters.length; i++) for (let j = i + 1; j < clusters.length; j++) {
-      if (!overlaps(descriptions[i], descriptions[j])) continue;
-      clusters[i].push(...clusters[j]);
-      clusters.splice(j, 1);
-      merged = true;
-      break outer;
+  const deckPositions = [], deckIndices = [];
+  for (const crossing of crossings) {
+    const offset = deckPositions.length / 3, half = crossing.width / 2;
+    for (let i = 0; i < crossing.points.length; i++) {
+      const point = crossing.points[i], prev = crossing.points[Math.max(0, i - 1)], next = crossing.points[Math.min(crossing.points.length - 1, i + 1)];
+      const dx = next.x - prev.x, dz = next.z - prev.z, length = Math.hypot(dx, dz) || 1;
+      const nx = -dz / length, nz = dx / length;
+      deckPositions.push(point.x + nx * half, 0.04, point.z + nz * half,
+        point.x - nx * half, 0.04, point.z - nz * half,
+        point.x + nx * half, -0.09, point.z + nz * half,
+        point.x - nx * half, -0.09, point.z - nz * half);
     }
-  }
-  for (const cluster of clusters) {
-    const { x, z, ux, uz, nx, nz, length, width } = describeCluster(cluster);
-    const ry = Math.atan2(ux, uz), railOffset = width / 2 + 0.02;
-    decks.push({ x, z, y: -0.025, ry, sx: width, sy: 0.13, sz: length });
-    for (const sign of [-1, 1]) {
-      rails.push({ x: x + nx * railOffset * sign, z: z + nz * railOffset * sign,
-        y: 0.36, ry, sx: 0.07, sy: 0.075, sz: length });
-      const postOffsets = length > 3 ? [-0.28, 0.28] : [0];
-      for (const alongOffset of postOffsets) supports.push({
-        x: x + nx * railOffset * sign + ux * length * alongOffset,
-        z: z + nz * railOffset * sign + uz * length * alongOffset,
-        y: -0.14, ry, sx: 0.11, sy: 1.05, sz: 0.11,
-      });
+    for (let i = 0; i < crossing.points.length - 1; i++) {
+      const a = offset + i * 4, b = a + 4;
+      deckIndices.push(a, b, a + 1, a + 1, b, b + 1,
+        a + 2, a + 3, b + 2, a + 3, b + 3, b + 2,
+        a + 2, b + 2, a, a, b + 2, b,
+        a + 1, b + 1, a + 3, a + 3, b + 1, b + 3);
     }
+    const first = offset, last = offset + (crossing.points.length - 1) * 4;
+    deckIndices.push(first, first + 1, first + 2, first + 1, first + 3, first + 2,
+      last, last + 2, last + 1, last + 1, last + 2, last + 3);
   }
+  const deckGeometry = new THREE.BufferGeometry();
+  deckGeometry.setAttribute('position', new THREE.Float32BufferAttribute(deckPositions, 3));
+  deckGeometry.setIndex(deckIndices); deckGeometry.computeVertexNormals(); deckGeometry.computeBoundingSphere();
   const wood = theme.id === 'meadow' || theme.id === 'graveyard';
-  instanceBatch(group, 'bridge-decks', new THREE.BoxGeometry(1, 1, 1), std(wood ? 0xa99573 : palette.bank), decks);
-  instanceBatch(group, 'bridge-rails', new THREE.BoxGeometry(1, 1, 1), std(wood ? 0x756958 : palette.cliff), rails);
+  const deckMesh = new THREE.Mesh(deckGeometry, std(wood ? 0xa99573 : palette.bank, { side: THREE.DoubleSide }));
+  deckMesh.name = 'bridge-decks'; deckMesh.castShadow = true; deckMesh.receiveShadow = true;
+  deckMesh.userData.corridors = crossings.map(({ points, width }) => ({ width, points: points.map(({ x, z }) => ({ x, z })) }));
+  deckMesh.userData.crossingCount = crossings.length;
+  group.add(deckMesh);
+
+  for (const [crossingIndex, crossing] of crossings.entries()) {
+    let plankAt = 0, traveled = 0;
+    for (let i = 0; i < crossing.points.length - 1; i++) {
+      const a = crossing.points[i], b = crossing.points[i + 1];
+      const dx = b.x - a.x, dz = b.z - a.z, length = Math.hypot(dx, dz);
+      if (length < 1e-5) continue;
+      const ux = dx / length, uz = dz / length, nx = -uz, nz = ux;
+      const x = (a.x + b.x) / 2, z = (a.z + b.z) / 2, ry = Math.atan2(dx, dz);
+      for (const sign of [-1, 1]) {
+        const offset = crossing.width / 2 + 0.02, ex = x + nx * offset * sign, ez = z + nz * offset * sign;
+        const samples = [-0.45, 0, 0.45].map((along) => ({ x: ex + ux * length * along, z: ez + uz * length * along }));
+        const entersJunction = crossings.some((other, index) => index !== crossingIndex &&
+          samples.some((sample) => insideCrossing(other, sample.x, sample.z, 0.08)));
+        if (!entersJunction) rails.push({ x: ex, z: ez, y: 0.32, ry, sx: 0.065, sy: 0.06, sz: length * 1.04, crossingIndex });
+        if (!entersJunction && i % 8 === 0) supports.push({ x: ex, z: ez, y: -0.14, ry,
+          sx: 0.09, sy: 0.92, sz: 0.09 });
+      }
+      while (plankAt <= traveled + length) {
+        if (plankAt >= traveled) {
+          const t = (plankAt - traveled) / length, px = a.x + dx * t, pz = a.z + dz * t;
+          const atJunction = crossings.some((other, index) => index !== crossingIndex && insideCrossing(other, px, pz, 0));
+          if (!atJunction) planks.push({ x: px, z: pz, y: 0.048, ry,
+            sx: crossing.width * 0.94, sy: 0.012, sz: 0.025 });
+        }
+        plankAt += 0.42;
+      }
+      traveled += length;
+    }
+  }
+  const railMesh = instanceBatch(group, 'bridge-rails', new THREE.BoxGeometry(1, 1, 1), std(wood ? 0x756958 : palette.cliff), rails);
+  if (railMesh) railMesh.userData.corridorIndices = rails.map(({ crossingIndex }) => crossingIndex);
   instanceBatch(group, 'bridge-piers', new THREE.BoxGeometry(1, 1, 1), std(palette.cliff), supports);
+  instanceBatch(group, 'bridge-planks', new THREE.BoxGeometry(1, 1, 1), std(wood ? 0x756958 : palette.cliff), planks, false);
   instanceBatch(group, 'road-curbstones', new THREE.BoxGeometry(1, 1, 1), std(palette.bank), stones);
   const arrowGeo = new THREE.BufferGeometry();
   arrowGeo.setAttribute('position', new THREE.Float32BufferAttribute([-1,0,-1, 0,0,0, 0,0,1, 0,0,1, 0,0,0, 1,0,-1], 3));
