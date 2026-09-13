@@ -317,14 +317,23 @@ export async function buildTerrain({ theme, map }) {
   const edgeMat = new THREE.MeshStandardMaterial({ color: theme.id === 'frost' ? 0x688895 : 0x625c50, roughness: 1 });
   const roadMat = new THREE.MeshStandardMaterial({ map: pathTex, color: theme.pathTint, roughness: 0.85 });
   routes.forEach((route, i) => {
-    const shoulder = new THREE.Mesh(buildRibbonGeometry(route, 1.5), dirtMat);
-    const edge = new THREE.Mesh(buildRibbonGeometry(route, 1.18), edgeMat);
-    const road = new THREE.Mesh(buildRibbonGeometry(route, 0.96), roadMat);
-    shoulder.position.y = 0.015 + i * 0.001;
-    edge.position.y = 0.022 + i * 0.001;
-    road.position.y = 0.032 + i * 0.001;
+    const routeMaterial = (base) => {
+      if (i === 0) return base;
+      const material = base.clone();
+      material.polygonOffset = true;
+      material.polygonOffsetFactor = -2 * i;
+      material.polygonOffsetUnits = -2 * i;
+      return material;
+    };
+    const shoulder = new THREE.Mesh(buildRibbonGeometry(route, 1.5), routeMaterial(dirtMat));
+    const edge = new THREE.Mesh(buildRibbonGeometry(route, 1.18), routeMaterial(edgeMat));
+    const road = new THREE.Mesh(buildRibbonGeometry(route, 0.96), routeMaterial(roadMat));
+    const routeLayer = i * 0.006;
+    shoulder.position.y = 0.015 + routeLayer;
+    edge.position.y = 0.022 + routeLayer;
+    road.position.y = 0.032 + routeLayer;
     road.name = `route-${i}`;
-    for (const mesh of [shoulder, edge, road]) mesh.receiveShadow = true;
+    for (const mesh of [shoulder, edge, road]) { mesh.receiveShadow = true; mesh.renderOrder = i; }
     group.add(shoulder, edge, road);
   });
 

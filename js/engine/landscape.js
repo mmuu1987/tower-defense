@@ -100,6 +100,14 @@ export function createLandscape({ theme, layout, rng }) {
   // At multi-route junctions the shared deck stays continuous while internal
   // rails are omitted, so the result reads as one intentional bridge junction.
   const rails = [], supports = [], planks = [], stones = [], markers = [], crossings = [];
+  const distanceToSegmentSq = (x, z, a, b) => {
+    const dx = b.x - a.x, dz = b.z - a.z, lengthSq = dx * dx + dz * dz;
+    if (lengthSq < 1e-8) return (x - a.x) ** 2 + (z - a.z) ** 2;
+    const t = Math.max(0, Math.min(1, ((x - a.x) * dx + (z - a.z) * dz) / lengthSq));
+    return (x - a.x - dx * t) ** 2 + (z - a.z - dz * t) ** 2;
+  };
+  const nearOtherRoute = (routeIndex, x, z, radius) => routes.some((route, index) => index !== routeIndex &&
+    route.some((point, i) => i < route.length - 1 && distanceToSegmentSq(x, z, point, route[i + 1]) < radius ** 2));
   const addCrossing = (route, start, end) => {
     let from = start, to = end + 1, extension = 0;
     while (from > 0 && extension < 1.8 && (extension < 0.55 || waterDistance(route[from].x, route[from].z) < 0.75)) {
@@ -114,7 +122,7 @@ export function createLandscape({ theme, layout, rng }) {
     const points = route.slice(from, to + 1);
     if (points.length > 1) crossings.push({ points, width: 1.32 });
   };
-  for (const route of routes) {
+  for (const [routeIndex, route] of routes.entries()) {
     let traveled = 0, nextMarker = 2, wetStart = -1;
     for (let i = 0; i < route.length - 1; i++) {
       const a = route[i], b = route[i + 1];
@@ -129,22 +137,19 @@ export function createLandscape({ theme, layout, rng }) {
         wetStart = -1;
       }
       if (!wet && i % 4 === 0) {
-        for (const sign of [-1, 1]) stones.push({ x: x + nx * 0.63 * sign, z: z + nz * 0.63 * sign,
-          y: 0.025, ry: ry + rng() * 0.2, sx: 0.14, sy: 0.09 + rng() * 0.035, sz: 0.22 + rng() * 0.13 });
+        for (const sign of [-1, 1]) {
+          const sx = x + nx * 0.63 * sign, sz = z + nz * 0.63 * sign;
+          if (!nearOtherRoute(routeIndex, sx, sz, 0.82)) stones.push({ x: sx, z: sz,
+            y: 0.025, ry: ry + rng() * 0.2, sx: 0.14, sy: 0.09 + rng() * 0.035, sz: 0.22 + rng() * 0.13 });
+        }
       }
-      if (traveled >= nextMarker && waterDistance(x, z) > 0.8) {
+      if (traveled >= nextMarker && waterDistance(x, z) > 0.8 && !nearOtherRoute(routeIndex, x, z, 0.72)) {
         markers.push({ x, z, y: 0.044, ry, sx: 0.21, sy: 1, sz: 0.25 });
         nextMarker = traveled + 5.5;
       }
     }
   }
 
-  const distanceToSegmentSq = (x, z, a, b) => {
-    const dx = b.x - a.x, dz = b.z - a.z, lengthSq = dx * dx + dz * dz;
-    if (lengthSq < 1e-8) return (x - a.x) ** 2 + (z - a.z) ** 2;
-    const t = Math.max(0, Math.min(1, ((x - a.x) * dx + (z - a.z) * dz) / lengthSq));
-    return (x - a.x - dx * t) ** 2 + (z - a.z - dz * t) ** 2;
-  };
   const insideCrossing = (crossing, x, z, padding = 0) => {
     const radiusSq = (crossing.width / 2 + padding) ** 2;
     for (let i = 0; i < crossing.points.length - 1; i++) {
@@ -159,10 +164,10 @@ export function createLandscape({ theme, layout, rng }) {
       const point = crossing.points[i], prev = crossing.points[Math.max(0, i - 1)], next = crossing.points[Math.min(crossing.points.length - 1, i + 1)];
       const dx = next.x - prev.x, dz = next.z - prev.z, length = Math.hypot(dx, dz) || 1;
       const nx = -dz / length, nz = dx / length;
-      deckPositions.push(point.x + nx * half, 0.04, point.z + nz * half,
-        point.x - nx * half, 0.04, point.z - nz * half,
-        point.x + nx * half, -0.09, point.z + nz * half,
-        point.x - nx * half, -0.09, point.z - nz * half);
+      deckPositions.push(point.x + nx * half, 0.06, point.z + nz * half,
+        point.x - nx * half, 0.06, point.z - nz * half,
+        point.x + nx * half, -0.07, point.z + nz * half,
+        point.x - nx * half, -0.07, point.z - nz * half);
     }
     for (let i = 0; i < crossing.points.length - 1; i++) {
       const a = offset + i * 4, b = a + 4;
@@ -206,7 +211,7 @@ export function createLandscape({ theme, layout, rng }) {
         if (plankAt >= traveled) {
           const t = (plankAt - traveled) / length, px = a.x + dx * t, pz = a.z + dz * t;
           const atJunction = crossings.some((other, index) => index !== crossingIndex && insideCrossing(other, px, pz, 0));
-          if (!atJunction) planks.push({ x: px, z: pz, y: 0.048, ry,
+          if (!atJunction) planks.push({ x: px, z: pz, y: 0.068, ry,
             sx: crossing.width * 0.94, sy: 0.012, sz: 0.025 });
         }
         plankAt += 0.42;

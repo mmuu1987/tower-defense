@@ -88,12 +88,20 @@ try {
           if (corridors.some((corridor, index) => index !== own && railSamples.some((point) => insideCorridor(corridor, point)))) railIntrusions++;
         }
         const deckMaxWidth = Math.max(...corridors.map((corridor) => corridor.width));
+        const roads = Array.from({ length: b.samplers.length }, (_, index) => t.group.getObjectByName(`route-${index}`));
+        const roadLayerGap = roads.length > 1 ? Math.min(...roads.slice(1).map((road, index) =>
+          road.position.y - roads[index].position.y)) : 1;
+        const roadDepthBiased = roads.slice(1).every((road) => road.material.polygonOffset &&
+          road.material.polygonOffsetFactor < 0 && road.material.polygonOffsetUnits < 0);
+        const deckTop = Math.max(...deck.geometry.attributes.position.array.filter((_, index) => index % 3 === 1));
+        const bridgeRoadClearance = deckTop - Math.max(...roads.map((road) => road.position.y));
         return { id: t.map.id, size: [t.halfW * 2,t.halfH * 2], routes: b.samplers.length, bright: bright / n, colors: colors.size,
           deviation: Math.sqrt(sum2/n - (sum/n)**2), finite, meshes,
           maxX: Math.max(...samples.map((p) => Math.abs(p.x))), maxY: Math.max(...samples.map((p) => Math.abs(p.y))),
           bridges: deck.userData.crossingCount,
           decor: t.decor.group.children.length, animated: JSON.stringify(before) !== JSON.stringify(after),
           waterAnimated, deckGaps, bridgeHeadsOffRoad, railIntrusions, deckMaxWidth,
+          roadLayerGap, roadDepthBiased, bridgeRoadClearance,
           textures: d.renderer.info.memory.textures, geometry: d.renderer.info.memory.geometries };
       });
       assert.ok(data.finite, data.id + ' finite geometry');
@@ -107,6 +115,8 @@ try {
       assert.equal(data.bridgeHeadsOffRoad, 0, 'bridge heads must extend onto the road ' + data.id);
       assert.equal(data.railIntrusions, 0, 'bridge rails must not cross another lane ' + data.id);
       assert.ok(data.deckMaxWidth <= 1.35, 'bridge width must stay aligned with the road ' + data.id);
+      assert.ok(data.roadLayerGap >= 0.005 && data.roadDepthBiased, 'overlapping roads need stable depth ordering ' + data.id);
+      assert.ok(data.bridgeRoadClearance >= 0.015, 'bridge deck needs road clearance ' + data.id);
       if (visualCoverage) await page.screenshot({ path: 'logs/maps/' + viewport.width + '-' + data.id + '.png' });
       rows.push({ viewport: viewport.width + 'x' + viewport.height, ...data });
     }
