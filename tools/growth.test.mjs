@@ -102,6 +102,11 @@ test('cost and nested stat snapshots reject invalid input and never mutate regis
   assert.equal(JSON.stringify(TOWER_DEFS), before);
 });
 
+test('frost slow progression stays within the reduced control budget', () => {
+  assert.deepEqual(Array.from({ length: 8 }, (_, level) => statsFor('frost', level).slow.pct),
+    [0.43, 0.5, 0.56, 0.59, 0.62, 0.64, 0.66, 0.68]);
+});
+
 test('unlock boundaries, pause and foreign tower commands do not spend gold', (t) => {
   const b = setup(t, { worldIdx: 0, lvlIdx: 5 });
   b.selectedType = 'venom';

@@ -154,6 +154,7 @@ test('EMP 与冰霜技能通过统一效果协议施加减速', (t) => {
     tower.skillCooldowns[tier] = 0;
     assert.equal(battle.useSelectedSkill(tier), true);
     assert.ok(target.slowPct > 0 && target.slowT > 0, `${key} 技能必须真正减速目标`);
+    if (key === 'frost') assert.ok(target.slowPct <= 0.66, '冰环新星减速不应超出收敛后的预算');
     battle.destroy();
   }
 });
@@ -219,6 +220,7 @@ test('满级主动技能的爆发与增伤预算保持受控', (t) => {
     assert.equal(battle.useSelectedSkill('ultimate'), true);
     assert.ok(hp - target.hp <= Math.round(tower.combatStats().dmg * multiplier),
       `${key} 终极技能对单体的瞬时伤害不应超过设定预算`);
+    if (key === 'frost') assert.equal(target.slowPct, 0.54, '极寒领域应采用下调后的减速强度');
   }
 });
 

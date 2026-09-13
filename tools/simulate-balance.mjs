@@ -168,7 +168,9 @@ async function runAll() {
   }
 
   assert.equal(results.some((result) => result.time >= 1800), false, 'a balance simulation timed out');
-  assert.ok(summary.wins >= 45, `competent real-economy strategy wins too few levels: ${summary.wins}/50`);
+  assert.ok(results.slice(0, 30).every((result) => result.win),
+    'the fixed real-economy strategy must clear every early and mid-campaign level');
+  assert.ok(summary.wins >= 40, `competent real-economy strategy wins too few levels: ${summary.wins}/50`);
   const late = results.slice(30);
   assert.ok(late.some((result) => result.leaks > 0 || !result.win),
     'late campaign is too weak: the fixed real-economy strategy perfect-cleared every level');

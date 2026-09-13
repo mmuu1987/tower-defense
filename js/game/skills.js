@@ -39,7 +39,7 @@ export const SKILL_DEFS = {
     signature: { key: 'frostNova', name: '冰环新星', unlockLevel: 4, cooldown: 16 },
     ultimate: { key: 'blizzardField', name: '极寒领域', unlockLevel: 8, cooldown: 20 },
     specializations: {
-      A: { key: 'deepFreeze', name: '深度冻结', desc: '更强的减速效果', modifiers: { slowPct: 0.07, slowDurationPct: 0.2, signatureSlowPct: 0.05 } },
+      A: { key: 'deepFreeze', name: '深度冻结', desc: '更强的减速效果', modifiers: { slowPct: 0.06, slowDurationPct: 0.2, signatureSlowPct: 0.045 } },
       B: { key: 'frozenCycle', name: '冰冻循环', desc: '更频繁的冰环释放', modifiers: { ratePct: 0.1, signatureCooldownPct: -0.15, slowedDamagePct: 0.08 } },
     },
   },
@@ -327,7 +327,7 @@ function castFrost(tower, tier, ctx) {
     // 冰环新星：扩大范围的减速 + 伤害
     const mods = specializationModifiers(tower);
     const radius = s.range + 0.6;
-    const slowPct = s.slow.pct + 0.08 + (mods.signatureSlowPct || 0);
+    const slowPct = s.slow.pct + 0.07 + (mods.signatureSlowPct || 0);
     const slowDur = s.slow.dur + 0.8;
     const targets = targetsInRange(tower, ctx, radius);
     for (const e of targets) {
@@ -351,7 +351,7 @@ function castFrost(tower, tier, ctx) {
   for (const e of nearby) {
     ctx.hitEnemy(e, Math.round(s.dmg * 1.5), {
       ...damageOpts(tower),
-      effects: { slow: { pct: 0.6, dur: 4 } },
+      effects: { slow: { pct: 0.54, dur: 4 } },
     });
     // 极寒领域增伤效果：被冰冻的敌人短时间受到额外伤害
     if (!e.effects) e.effects = {};

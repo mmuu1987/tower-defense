@@ -219,12 +219,22 @@ async function init() {
 
   // 射程预览环
   const preview = new THREE.Group();
-  const ringMat = new THREE.MeshBasicMaterial({ color: 0x59d97a, transparent: true, opacity: 0.85, depthWrite: false });
-  const discMat = new THREE.MeshBasicMaterial({ color: 0x59d97a, transparent: true, opacity: 0.1, depthWrite: false });
+  preview.name = 'tower-range-preview';
+  const ringMat = new THREE.MeshBasicMaterial({
+    color: 0x59d97a, transparent: true, opacity: 0.85, depthTest: false, depthWrite: false,
+  });
+  const discMat = new THREE.MeshBasicMaterial({
+    color: 0x59d97a, transparent: true, opacity: 0.1, depthTest: false, depthWrite: false,
+  });
   const ringMesh = new THREE.Mesh(new THREE.RingGeometry(0.96, 1, 64), ringMat);
   const discMesh = new THREE.Mesh(new THREE.CircleGeometry(1, 48), discMat);
+  ringMesh.name = 'tower-range-ring';
+  discMesh.name = 'tower-range-disc';
   ringMesh.rotation.x = -Math.PI / 2;
   discMesh.rotation.x = -Math.PI / 2;
+  // 这是操作提示而非世界物件：置于地形之后渲染，避免丘陵、沙丘和桥面切掉提示圈。
+  ringMesh.renderOrder = 1000;
+  discMesh.renderOrder = 999;
   preview.add(ringMesh, discMesh);
   preview.position.y = 0.06;
   preview.visible = false;

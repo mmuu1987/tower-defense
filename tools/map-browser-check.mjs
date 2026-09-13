@@ -84,7 +84,7 @@ try {
       rows.push({ viewport: viewport.width + 'x' + viewport.height, ...data });
     }
     // Test real pointer placement against the raised ground mesh.
-    await page.evaluate(() => window.__TD_ENTER(0, 3));
+    await page.evaluate(() => window.__TD_ENTER(3, 9));
     const hudOverlaps = await page.evaluate(() => {
       const map = document.querySelector('#battle-map').getBoundingClientRect();
       return ['#hud-dock','#hud-actions','#hud-top','#hud-next'].filter((selector) => {
@@ -153,6 +153,12 @@ try {
     await page.setViewportSize(viewport);
     await page.waitForFunction(() => Math.abs(window.__TD_DEBUG.camera.aspect - innerWidth/innerHeight) < 0.001);
     await page.locator('.dock-card').first().click();
+    assert.deepEqual(await page.evaluate(() => {
+      const scene = window.__TD_DEBUG.scene;
+      const ring = scene.getObjectByName('tower-range-ring');
+      const disc = scene.getObjectByName('tower-range-disc');
+      return [ring?.material.depthTest, disc?.material.depthTest, ring?.renderOrder, disc?.renderOrder];
+    }), [false, false, 1000, 999], 'tower range preview must render above raised terrain');
     const cell = await page.evaluate(() => {
       const d = window.__TD_DEBUG, b = d.battle(), t = d.terrain();
       for (let cx = 2; cx < t.halfW * 2 - 2; cx++) for (let cz = 2; cz < t.halfH * 2 - 2; cz++) {
@@ -165,6 +171,11 @@ try {
       }
     });
     assert.ok(cell, 'visible tower location');
+    if (viewport.width >= 1000) {
+      await page.mouse.move(cell.x, cell.y);
+      const previewMap = await page.evaluate(() => window.__TD_DEBUG.terrain().map.id);
+      await page.screenshot({ path: `logs/maps/${viewport.width}-${previewMap}-range-preview.png` });
+    }
     if (viewport.width < 1000) await page.touchscreen.tap(cell.x, cell.y);
     else await page.mouse.click(cell.x, cell.y);
     const placed = await page.evaluate(() => { const b = window.__TD_DEBUG.battle(); return b.towers.map((t) => [t.cx,t.cz]); });
